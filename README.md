@@ -238,12 +238,3 @@ Example:
 - Bootstrap
 - Kaggle
 
----
-
-## 📄 License
-
-This project was developed for educational purposes as part of the **CS661 Visual Analytics** course.
-
----
-
-# ⭐ If you found this project useful, consider giving it a star!
