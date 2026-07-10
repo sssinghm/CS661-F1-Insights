@@ -1257,11 +1257,23 @@ def create_constructor_page(theme='dark'):
 
 
 # ============================================================
-# SLOT 6: QUALIFYING VS RACE PAGE
+# SLOT 6: QUALIFYING VS RACE PAGE - UPDATED WITH FILTERS
 # ============================================================
 def create_qualifying_page(theme='dark'):
-    """Create the Qualifying vs Race page"""
+    """Create the Qualifying vs Race page with filters"""
     df = load_data()
+    
+    # Theme colors
+    if theme == 'dark':
+        text_color, bg_color, card_bg, border_color = '#ffffff', '#0d0d1a', 'rgba(26, 26, 46, 0.85)', 'rgba(255, 255, 255, 0.08)'
+        carbon, panel, hairline, ink, muted, amber, amber_dim, grid_line = '#15171C', '#1B1E26', 'rgba(237,233,225,0.10)', '#FFFFFF', '#C7CCD6', '#FFB100', 'rgba(255,177,0,0.18)', 'rgba(237,233,225,0.06)'
+    else:
+        text_color, bg_color, card_bg, border_color = '#1a1a2e', '#f8f9fa', '#ffffff', '#e0e0e0'
+        carbon, panel, hairline, ink, muted, amber, amber_dim, grid_line = '#f8f9fa', '#ffffff', 'rgba(0,0,0,0.10)', '#1a1a2e', '#666666', '#ff6b35', 'rgba(255,107,53,0.18)', 'rgba(0,0,0,0.06)'
+    
+    # Get unique values for filters
+    available_years = sorted(df['year'].unique()) if 'year' in df.columns else []
+    available_teams = sorted(df['constructor_name'].unique()) if 'constructor_name' in df.columns else []
     
     # Clean data for qualifying analysis
     df_clean = df[(df['grid'] >= 1) & (df['grid'] <= 20) &
@@ -1279,114 +1291,25 @@ def create_qualifying_page(theme='dark'):
         df_clean['positions_gained'].astype(str), df_clean['status']
     ), axis=-1))
     
-    # Theme colors
-    if theme == 'dark':
-        text_color, bg_color, card_bg, border_color = '#ffffff', '#0d0d1a', 'rgba(26, 26, 46, 0.85)', 'rgba(255, 255, 255, 0.08)'
-        carbon, panel, hairline, ink, muted, amber, amber_dim, grid_line = '#15171C', '#1B1E26', 'rgba(237,233,225,0.10)', '#FFFFFF', '#C7CCD6', '#FFB100', 'rgba(255,177,0,0.18)', 'rgba(237,233,225,0.06)'
-    else:
-        text_color, bg_color, card_bg, border_color = '#1a1a2e', '#f8f9fa', '#ffffff', '#e0e0e0'
-        carbon, panel, hairline, ink, muted, amber, amber_dim, grid_line = '#f8f9fa', '#ffffff', 'rgba(0,0,0,0.10)', '#1a1a2e', '#666666', '#ff6b35', 'rgba(255,107,53,0.18)', 'rgba(0,0,0,0.06)'
+    # F1 Team Colors
+    f1_team_colors = {
+        'Ferrari': '#DC0000', 'Red Bull': '#3671C6', 'Mercedes': '#27F4D2',
+        'McLaren': '#FF8000', 'Aston Martin': '#00A19C', 'Alpine F1 Team': '#FF87BC',
+        'Renault': '#FFF500', 'Racing Point': '#F596C8', 'AlphaTauri': '#5E8FAA',
+        'Toro Rosso': '#469BFF', 'Sauber': '#52E252', 'RB F1 Team': '#6692FF',
+        'Alfa Romeo': '#C92D4B', 'Williams': '#64C4FF', 'Haas F1 Team': '#B6BABD'
+    }
     
-    unique_teams = sorted([team for team in F1_TEAM_COLORS.keys() if team in df_clean['constructor_name'].unique()])
+    unique_teams = sorted([team for team in f1_team_colors.keys() if team in df_clean['constructor_name'].unique()])
     min_year, max_year = int(df_clean['year'].min()), int(df_clean['year'].max())
     
-    # Build Scatter Plot
-    fig_scatter = go.Figure()
-    fig_scatter.add_shape(type="line", layer="below", x0=1, y0=1, x1=20, y1=20,
-                         line=dict(color="rgba(237,233,225,0.22)", width=1.5, dash="dash"))
+    # ============================================================
+    # BUILD SCATTER PLOT (with filters applied via callback)
+    # ============================================================
     
-    for team in unique_teams[:10]:
-        team_df = df_clean[df_clean['constructor_name'] == team]
-        fig_scatter.add_trace(go.Scatter(
-            x=team_df['grid_jittered'], y=team_df['position_jittered'],
-            mode='markers', name=team,
-            marker=dict(color=F1_TEAM_COLORS.get(team, '#FFFFFF'), size=9, opacity=0.88,
-                       line=dict(width=1, color='rgba(237,233,225,0.45)')),
-            text=team_df['driver_name'] if not team_df.empty else [],
-            customdata=team_df['customdata'].tolist() if not team_df.empty else [],
-            hovertemplate="<b>%{text}</b> (%{customdata[0]})<br>Team: " + team +
-                          "<br>GP: %{customdata[1]}<br>Started: P%{customdata[2]} | Finished: P%{customdata[3]}" +
-                          "<br>Net Change: %{customdata[4]} positions<br>Status: %{customdata[5]}<extra></extra>"
-        ))
-    
-    fig_scatter.update_layout(
-        title="Grid Position vs Finish Position",
-        xaxis_title="Starting Grid Position",
-        yaxis_title="Final Finish Position",
-        plot_bgcolor=panel,
-        paper_bgcolor=panel,
-        font_color=ink,
-        height=550,
-        xaxis=dict(range=[0.5, 20.5], tickmode='linear', tick0=1, dtick=1, gridcolor=grid_line, zeroline=False),
-        yaxis=dict(range=[0.5, 20.5], tickmode='linear', tick0=1, dtick=1, gridcolor=grid_line, zeroline=False),
-        legend=dict(title=dict(text='TEAM'), bgcolor='rgba(0,0,0,0)')
-    )
-    
-    # Build Heatmap
-    fig_heat = go.Figure(go.Histogram2d(
-        x=df_clean['grid'] if not df_clean.empty else [0],
-        y=df_clean['positionOrder'] if not df_clean.empty else [0],
-        xbins=dict(start=0.5, end=20.5, size=1),
-        ybins=dict(start=0.5, end=20.5, size=1),
-        colorscale=[[0.0, carbon], [0.4, '#3A404F'], [1.0, amber]],
-        showscale=True,
-        colorbar=dict(title=dict(text="Frequency", font=dict(color=muted, size=10)), tickfont=dict(color=ink)),
-        hovertemplate="Grid: P%{x}<br>Finish: P%{y}<br>Count: %{z}<extra></extra>"
-    ))
-    fig_heat.add_shape(type="line", layer="above", x0=1, y0=1, x1=20, y1=20,
-                      line=dict(color="rgba(237,233,225,0.4)", width=1.5, dash="dash"))
-    fig_heat.update_layout(
-        title="Position Density Heatmap",
-        xaxis_title="Starting Grid Position",
-        yaxis_title="Final Finish Position",
-        plot_bgcolor=panel,
-        paper_bgcolor=panel,
-        font_color=ink,
-        height=550,
-        xaxis=dict(range=[0.5, 20.5], tickmode='linear', tick0=1, dtick=1, gridcolor=grid_line, zeroline=False),
-        yaxis=dict(range=[0.5, 20.5], tickmode='linear', tick0=1, dtick=1, gridcolor=grid_line, zeroline=False)
-    )
-    
-    # Build Correlation Matrix
-    corr_cols = ['grid', 'positionOrder', 'positions_gained']
-    labels = ['Grid Position', 'Finish Position', 'Positions Gained']
-    
-    if not df_clean.empty and len(df_clean) > 1:
-        corr_matrix = df_clean[corr_cols].corr()
-    else:
-        corr_matrix = pd.DataFrame(np.zeros((3, 3)), index=corr_cols, columns=corr_cols)
-    
-    fig_corr = go.Figure(go.Heatmap(
-        z=corr_matrix.values,
-        x=labels,
-        y=labels,
-        zmin=-1, zmax=1,
-        text=np.round(corr_matrix.values, 2),
-        texttemplate="%{text}",
-        textfont=dict(color=ink, size=14),
-        colorscale=[[0.0, '#DC0000'], [0.5, carbon], [1.0, amber]],
-        showscale=True,
-        colorbar=dict(title=dict(text="Pearson Corr.", font=dict(color=muted, size=10)), tickfont=dict(color=ink)),
-        hovertemplate="%{x} vs %{y}<br>Correlation: %{z}<extra></extra>"
-    ))
-    fig_corr.update_layout(
-        title="Correlation Matrix",
-        plot_bgcolor=panel,
-        paper_bgcolor=panel,
-        font_color=ink,
-        height=550,
-        xaxis=dict(side='bottom', gridcolor=grid_line, color=muted),
-        yaxis=dict(autorange='reversed', gridcolor=grid_line, color=muted)
-    )
-    
-    total_results = len(df_clean)
-    avg_gain = df_clean['positions_gained'].mean() if total_results > 0 else 0
-    if total_results > 0:
-        best_row = df_clean.loc[df_clean['positions_gained'].idxmax()]
-        best_drive = f"{best_row['driver_name']} +{int(best_row['positions_gained'])}"
-    else:
-        best_drive = "—"
-    
+    # ============================================================
+    # BUILD PAGE WITH FILTERS
+    # ============================================================
     return html.Div([
         html.Div([
             html.H2([html.Span("⚡ "), "Qualifying vs Race"]),
@@ -1402,61 +1325,277 @@ def create_qualifying_page(theme='dark'):
             "boxShadow": "0 8px 24px rgba(0,0,0,0.35)"
         }),
         
-        # Stats cards
-        dbc.Row([
-            dbc.Col(html.Div(className="stat-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '20px', 'borderRadius': '12px', 'textAlign': 'center'}, children=[
-                html.H3(f"{total_results:,}", className="stat-number", style={'color': '#ff6b35'}),
-                html.P("🏁 Results Plotted", className="stat-label", style={'color': text_color})
-            ]), width=4),
-            dbc.Col(html.Div(className="stat-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '20px', 'borderRadius': '12px', 'textAlign': 'center'}, children=[
-                html.H3(f"{avg_gain:+.2f}", className="stat-number", style={'color': '#4ecdc4'}),
-                html.P("📊 Avg Positions Gained", className="stat-label", style={'color': text_color})
-            ]), width=4),
-            dbc.Col(html.Div(className="stat-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '20px', 'borderRadius': '12px', 'textAlign': 'center'}, children=[
-                html.H3(f"{best_drive}", className="stat-number", style={'color': '#ffe66d', 'fontSize': '20px'}),
-                html.P("🏆 Most Improved Drive", className="stat-label", style={'color': text_color})
-            ]), width=4),
-        ], className="mb-3"),
-        
-        # Charts
+        # ============================================================
+        # FILTERS
+        # ============================================================
         html.Div([
-            html.Div([dcc.Graph(figure=fig_scatter, config={'displayModeBar': True})], 
-                     className="chart-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '15px', 'borderRadius': '12px'}),
-            html.Div([dcc.Graph(figure=fig_heat, config={'displayModeBar': True})], 
-                     className="chart-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '15px', 'borderRadius': '12px'}),
-            html.Div([dcc.Graph(figure=fig_corr, config={'displayModeBar': True})], 
-                     className="chart-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '15px', 'borderRadius': '12px'})
-        ], className="charts-grid", style={'display': 'grid', 'gridTemplateColumns': '1fr 1fr 1fr', 'gap': '20px', 'marginBottom': '20px'}),
+            html.Div([
+                html.Label("📅 Season:", style={'color': text_color, 'fontWeight': 'bold', 'marginRight': '10px'}),
+                dcc.Dropdown(
+                    id='qualifying-year-filter',
+                    options=[{'label': 'All Years', 'value': 'all'}] + [{'label': str(y), 'value': y} for y in available_years],
+                    value='all',
+                    clearable=False,
+                    style={'width': '200px', 'backgroundColor': '#ffffff', 'color': '#000000', 'border': '1px solid #cccccc', 'borderRadius': '4px'}
+                )
+            ], style={'display': 'flex', 'alignItems': 'center', 'marginRight': '20px'}),
+            
+            html.Div([
+                html.Label("🏭 Team:", style={'color': text_color, 'fontWeight': 'bold', 'marginRight': '10px'}),
+                dcc.Dropdown(
+                    id='qualifying-team-filter',
+                    options=[{'label': 'All Teams', 'value': 'all'}] + [{'label': team, 'value': team} for team in available_teams],
+                    value='all',
+                    clearable=False,
+                    style={'width': '250px', 'backgroundColor': '#ffffff', 'color': '#000000', 'border': '1px solid #cccccc', 'borderRadius': '4px'}
+                )
+            ], style={'display': 'flex', 'alignItems': 'center'})
+        ], style={'display': 'flex', 'flexWrap': 'wrap', 'gap': '15px', 'marginBottom': '20px'}),
         
-        # Key Insights
+        # ============================================================
+        # CHARTS - VERTICAL LAYOUT
+        # ============================================================
+        html.Div([
+            # Chart 1: Scatter Plot (Full Width)
+            html.Div([
+                dcc.Loading(
+                    dcc.Graph(id='qualifying-scatter-plot', config={'displayModeBar': True})
+                )
+            ], className="chart-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '15px', 'borderRadius': '12px', 'marginBottom': '20px'}),
+            
+            # Chart 2: Heatmap (Full Width)
+            html.Div([
+                dcc.Loading(
+                    dcc.Graph(id='qualifying-heatmap', config={'displayModeBar': True})
+                )
+            ], className="chart-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '15px', 'borderRadius': '12px', 'marginBottom': '20px'}),
+            
+            # Chart 3: Correlation Matrix (Full Width)
+            html.Div([
+                dcc.Loading(
+                    dcc.Graph(id='qualifying-correlation', config={'displayModeBar': True})
+                )
+            ], className="chart-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '15px', 'borderRadius': '12px', 'marginBottom': '20px'})
+        ]),
+        
+        # ============================================================
+        # KEY INSIGHTS
+        # ============================================================
         html.Div([
             html.H3("💡 Key Insights", className="insights-title", style={'color': text_color}),
-            dbc.Row([
-                dbc.Col(html.Div([
-                    html.Span("🏁 ", style={'fontSize': '20px'}),
-                    html.Span("Qualifying matters: ", style={'fontWeight': 'bold', 'color': text_color}),
-                    html.Span(f"{corr_matrix.loc['grid', 'positionOrder']:.2f} correlation between grid and finish position", 
-                             style={'color': '#ff6b35'})
-                ], className="insight-item", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '12px 15px', 'borderRadius': '8px'}), width=6),
-                dbc.Col(html.Div([
-                    html.Span("📈 ", style={'fontSize': '20px'}),
-                    html.Span("Average position gain: ", style={'fontWeight': 'bold', 'color': text_color}),
-                    html.Span(f"{avg_gain:+.2f} positions per driver", style={'color': '#4ecdc4'})
-                ], className="insight-item", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '12px 15px', 'borderRadius': '8px'}), width=6),
-                dbc.Col(html.Div([
-                    html.Span("🏆 ", style={'fontSize': '20px'}),
-                    html.Span("Most improved: ", style={'fontWeight': 'bold', 'color': text_color}),
-                    html.Span(f"{best_drive}", style={'color': '#ffe66d'})
-                ], className="insight-item", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '12px 15px', 'borderRadius': '8px'}), width=6),
-                dbc.Col(html.Div([
-                    html.Span("📊 ", style={'fontSize': '20px'}),
-                    html.Span("Total results analyzed: ", style={'fontWeight': 'bold', 'color': text_color}),
-                    html.Span(f"{total_results:,}", style={'color': '#ff6b6b'})
-                ], className="insight-item", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '12px 15px', 'borderRadius': '8px'}), width=6),
-            ], className="insights-grid", style={'display': 'grid', 'gridTemplateColumns': '1fr 1fr', 'gap': '12px'})
+            html.Div([
+                html.Div(id='qualifying-insight-1', className="insight-item", 
+                        style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '12px 15px', 'borderRadius': '8px'}),
+                html.Div(id='qualifying-insight-2', className="insight-item", 
+                        style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '12px 15px', 'borderRadius': '8px'}),
+                html.Div(id='qualifying-insight-3', className="insight-item", 
+                        style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '12px 15px', 'borderRadius': '8px'}),
+                html.Div(id='qualifying-insight-4', className="insight-item", 
+                        style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '12px 15px', 'borderRadius': '8px'})
+            ], className="insights-grid")
         ], className="insights-container", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '20px', 'borderRadius': '12px', 'marginBottom': '20px'})
     ])
 
+
+# ============================================================
+# QUALIFYING VS RACE CALLBACKS
+# ============================================================
+def register_qualifying_callbacks(app):
+    
+    @app.callback(
+        [Output('qualifying-scatter-plot', 'figure'),
+         Output('qualifying-heatmap', 'figure'),
+         Output('qualifying-correlation', 'figure'),
+         Output('qualifying-insight-1', 'children'),
+         Output('qualifying-insight-2', 'children'),
+         Output('qualifying-insight-3', 'children'),
+         Output('qualifying-insight-4', 'children')],
+        [Input('qualifying-year-filter', 'value'),
+         Input('qualifying-team-filter', 'value')],
+        [State('theme-store', 'data')]
+    )
+    def update_qualifying_charts(year_filter, team_filter, theme):
+        df = load_data()
+        
+        # Theme colors
+        if theme == 'dark':
+            carbon, panel, grid_line, ink, muted, amber = '#15171C', '#1B1E26', 'rgba(237,233,225,0.06)', '#FFFFFF', '#C7CCD6', '#FFB100'
+        else:
+            carbon, panel, grid_line, ink, muted, amber = '#f8f9fa', '#ffffff', 'rgba(0,0,0,0.06)', '#1a1a2e', '#666666', '#ff6b35'
+        
+        # Clean data
+        df_clean = df[(df['grid'] >= 1) & (df['grid'] <= 20) &
+                      (df['positionOrder'] >= 1) & (df['positionOrder'] <= 20)].copy()
+        
+        # Apply year filter
+        if year_filter != 'all':
+            df_clean = df_clean[df_clean['year'] == year_filter]
+        
+        # Apply team filter
+        if team_filter != 'all':
+            df_clean = df_clean[df_clean['constructor_name'] == team_filter]
+        
+        # Add jittered columns
+        np.random.seed(42)
+        df_clean['grid_jittered'] = df_clean['grid'] + np.random.uniform(-0.15, 0.15, len(df_clean))
+        df_clean['position_jittered'] = df_clean['positionOrder'] + np.random.uniform(-0.15, 0.15, len(df_clean))
+        
+        df_clean['customdata'] = list(np.stack((
+            df_clean['year'].astype(str), df_clean['race_name'],
+            df_clean['grid'].astype(str), df_clean['positionOrder'].astype(str),
+            df_clean['positions_gained'].astype(str), df_clean['status']
+        ), axis=-1))
+        
+        # F1 Team Colors
+        f1_team_colors = {
+            'Ferrari': '#DC0000', 'Red Bull': '#3671C6', 'Mercedes': '#27F4D2',
+            'McLaren': '#FF8000', 'Aston Martin': '#00A19C', 'Alpine F1 Team': '#FF87BC',
+            'Renault': '#FFF500', 'Racing Point': '#F596C8', 'AlphaTauri': '#5E8FAA',
+            'Toro Rosso': '#469BFF', 'Sauber': '#52E252', 'RB F1 Team': '#6692FF',
+            'Alfa Romeo': '#C92D4B', 'Williams': '#64C4FF', 'Haas F1 Team': '#B6BABD'
+        }
+        
+        unique_teams = sorted([team for team in f1_team_colors.keys() if team in df_clean['constructor_name'].unique()])
+        
+        # ============================================================
+        # SCATTER PLOT
+        # ============================================================
+        fig_scatter = go.Figure()
+        fig_scatter.add_shape(type="line", layer="below", x0=1, y0=1, x1=20, y1=20,
+                             line=dict(color="rgba(237,233,225,0.22)", width=1.5, dash="dash"))
+        
+        for team in unique_teams[:10]:
+            team_df = df_clean[df_clean['constructor_name'] == team]
+            fig_scatter.add_trace(go.Scatter(
+                x=team_df['grid_jittered'], y=team_df['position_jittered'],
+                mode='markers', name=team,
+                marker=dict(color=f1_team_colors.get(team, '#FFFFFF'), size=9, opacity=0.88,
+                           line=dict(width=1, color='rgba(237,233,225,0.45)')),
+                text=team_df['driver_name'] if not team_df.empty else [],
+                customdata=team_df['customdata'].tolist() if not team_df.empty else [],
+                hovertemplate="<b>%{text}</b> (%{customdata[0]})<br>Team: " + team +
+                              "<br>GP: %{customdata[1]}<br>Started: P%{customdata[2]} | Finished: P%{customdata[3]}" +
+                              "<br>Net Change: %{customdata[4]} positions<br>Status: %{customdata[5]}<extra></extra>"
+            ))
+        
+        fig_scatter.update_layout(
+            title="Grid Position vs Finish Position",
+            xaxis_title="Starting Grid Position",
+            yaxis_title="Final Finish Position",
+            plot_bgcolor=panel,
+            paper_bgcolor=panel,
+            font_color=ink,
+            height=550,
+            xaxis=dict(range=[0.5, 20.5], tickmode='linear', tick0=1, dtick=1, gridcolor=grid_line, zeroline=False),
+            yaxis=dict(range=[0.5, 20.5], tickmode='linear', tick0=1, dtick=1, gridcolor=grid_line, zeroline=False),
+            legend=dict(title=dict(text='TEAM'), bgcolor='rgba(0,0,0,0)')
+        )
+        
+        # ============================================================
+        # HEATMAP
+        # ============================================================
+        fig_heat = go.Figure(go.Histogram2d(
+            x=df_clean['grid'] if not df_clean.empty else [0],
+            y=df_clean['positionOrder'] if not df_clean.empty else [0],
+            xbins=dict(start=0.5, end=20.5, size=1),
+            ybins=dict(start=0.5, end=20.5, size=1),
+            colorscale=[[0.0, carbon], [0.4, '#3A404F'], [1.0, amber]],
+            showscale=True,
+            colorbar=dict(title=dict(text="Frequency", font=dict(color=muted, size=10)), tickfont=dict(color=ink)),
+            hovertemplate="Grid: P%{x}<br>Finish: P%{y}<br>Count: %{z}<extra></extra>"
+        ))
+        fig_heat.add_shape(type="line", layer="above", x0=1, y0=1, x1=20, y1=20,
+                          line=dict(color="rgba(237,233,225,0.4)", width=1.5, dash="dash"))
+        fig_heat.update_layout(
+            title="Position Density Heatmap",
+            xaxis_title="Starting Grid Position",
+            yaxis_title="Final Finish Position",
+            plot_bgcolor=panel,
+            paper_bgcolor=panel,
+            font_color=ink,
+            height=550,
+            xaxis=dict(range=[0.5, 20.5], tickmode='linear', tick0=1, dtick=1, gridcolor=grid_line, zeroline=False),
+            yaxis=dict(range=[0.5, 20.5], tickmode='linear', tick0=1, dtick=1, gridcolor=grid_line, zeroline=False)
+        )
+        
+        # ============================================================
+        # CORRELATION MATRIX
+        # ============================================================
+        corr_cols = ['grid', 'positionOrder', 'positions_gained']
+        labels = ['Grid Position', 'Finish Position', 'Positions Gained']
+        
+        if not df_clean.empty and len(df_clean) > 1:
+            corr_matrix = df_clean[corr_cols].corr()
+        else:
+            corr_matrix = pd.DataFrame(np.zeros((3, 3)), index=corr_cols, columns=corr_cols)
+        
+        fig_corr = go.Figure(go.Heatmap(
+            z=corr_matrix.values,
+            x=labels,
+            y=labels,
+            zmin=-1, zmax=1,
+            text=np.round(corr_matrix.values, 2),
+            texttemplate="%{text}",
+            textfont=dict(color=ink, size=14),
+            colorscale=[[0.0, '#DC0000'], [0.5, carbon], [1.0, amber]],
+            showscale=True,
+            colorbar=dict(title=dict(text="Pearson Corr.", font=dict(color=muted, size=10)), tickfont=dict(color=ink)),
+            hovertemplate="%{x} vs %{y}<br>Correlation: %{z}<extra></extra>"
+        ))
+        fig_corr.update_layout(
+            title="Correlation Matrix",
+            plot_bgcolor=panel,
+            paper_bgcolor=panel,
+            font_color=ink,
+            height=450,
+            xaxis=dict(side='bottom', gridcolor=grid_line, color=muted),
+            yaxis=dict(autorange='reversed', gridcolor=grid_line, color=muted)
+        )
+        
+        # ============================================================
+        # INSIGHTS
+        # ============================================================
+        total_results = len(df_clean)
+        avg_gain = df_clean['positions_gained'].mean() if total_results > 0 else 0
+        
+        if total_results > 0:
+            best_row = df_clean.loc[df_clean['positions_gained'].idxmax()]
+            best_drive = f"{best_row['driver_name']} +{int(best_row['positions_gained'])}"
+        else:
+            best_drive = "—"
+        
+        # Get correlation value
+        corr_value = corr_matrix.loc['grid', 'positionOrder'] if 'grid' in corr_matrix.index and 'positionOrder' in corr_matrix.columns else 0
+        
+        insight1 = html.Div([
+            html.Span("🏁 ", style={'fontSize': '20px'}),
+            html.Span("Qualifying matters: ", style={'fontWeight': 'bold'}),
+            html.Span(f"{corr_value:.2f} correlation between grid and finish position", style={'color': '#ff6b35'})
+        ])
+        
+        insight2 = html.Div([
+            html.Span("📈 ", style={'fontSize': '20px'}),
+            html.Span("Average position gain: ", style={'fontWeight': 'bold'}),
+            html.Span(f"{avg_gain:+.2f} positions per driver", style={'color': '#4ecdc4'})
+        ])
+        
+        insight3 = html.Div([
+            html.Span("🏆 ", style={'fontSize': '20px'}),
+            html.Span("Most improved: ", style={'fontWeight': 'bold'}),
+            html.Span(f"{best_drive}", style={'color': '#ffe66d'})
+        ])
+        
+        insight4 = html.Div([
+            html.Span("📊 ", style={'fontSize': '20px'}),
+            html.Span("Total results analyzed: ", style={'fontWeight': 'bold'}),
+            html.Span(f"{total_results:,}", style={'color': '#ff6b6b'})
+        ])
+        
+        return fig_scatter, fig_heat, fig_corr, insight1, insight2, insight3, insight4
+
+
+# Register the callback
+register_qualifying_callbacks(app)
 
 # ============================================================
 # SLOT 7: RACE STRATEGY PAGE
