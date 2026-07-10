@@ -102,18 +102,23 @@ F1-Visual-Analytics-Dashboard
 │
 ├── app.py
 ├── requirements.txt
-├── README.md
+├── README.md              
+├── start.bat
+├── setup.bat
 │
-├── data
-│   └── master_f1_final_dnf_fixed.csv
-│
-├── assets
+├── assets/
 │   └── style.css
 │
-└── pages
-```
-
----
+├── data/
+│   └── master_f1_final_dnf_fixed.csv
+│
+├── pages/
+│   ├── __init__.py
+│   └── championship_evolution.py
+│
+└── src/
+    ├── data_loader.py
+    └── filter.py
 
 ## 🚀 Installation
 
