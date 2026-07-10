@@ -252,35 +252,19 @@ The dataset contains information about:
 | ⚡ Qualifying vs Race | Qualifying vs finishing position analysis |
 
 ---
+# 📦 Project Resources
 
-# 📸 Dashboard Screenshots
+The complete project package, including the source code, dataset is available on Google Drive.
 
-Add screenshots inside
+📁 **Google Drive Download**
 
-```
-assets/screenshots/
-```
+https://drive.google.com/file/d/17c5metSIo9t86nKHVls-b6vqmiW3ZAZD/view?usp=sharing
 
-Example:
+The drive contains:
 
-```markdown
-![Overview](assets/screenshots/overview.png)
-
-![Championship](assets/screenshots/championship.png)
-
-![Drivers](assets/screenshots/drivers.png)
-
-![Constructors](assets/screenshots/constructors.png)
-
-![Circuits](assets/screenshots/circuits.png)
-
-![Strategy](assets/screenshots/strategy.png)
-
-![Qualifying](assets/screenshots/qualifying.png)
-```
-
+- 📂 Complete Source Code
+- 📊 Formula 1 Dataset
 ---
-
 # 📈 Visualizations Used
 
 The dashboard combines several visualization techniques:
@@ -295,19 +279,6 @@ The dashboard combines several visualization techniques:
 - 🍩 Donut Charts
 - 🌍 Interactive Maps
 - ↔ Dumbbell Charts
-
----
-
-# 🔮 Future Enhancements
-
-- Driver Head-to-Head Comparison
-- Weather Impact Analysis
-- Tire Strategy Visualization
-- Race Prediction Models
-- Live Formula 1 Data Integration
-- Export Dashboard Reports
-- Advanced Dashboard Filters
-- User Authentication
 
 ---
 
