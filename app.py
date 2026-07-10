@@ -1598,7 +1598,7 @@ def register_qualifying_callbacks(app):
 register_qualifying_callbacks(app)
 
 # ============================================================
-# SLOT 7: RACE STRATEGY PAGE
+# SLOT 7: RACE STRATEGY PAGE - UPDATED WITH NEW JUSTIFICATIONS
 # ============================================================
 def create_strategy_page(theme='dark'):
     """Create the Race Strategy Analysis page"""
@@ -1978,6 +1978,9 @@ def create_strategy_page(theme='dark'):
     else:
         fastest_constructor = 'N/A'
     
+    # ============================================================
+    # BUILD THE PAGE
+    # ============================================================
     return html.Div([
         html.Div([
             html.H2([html.Span("📈 "), "Race Strategy Analysis"]),
@@ -2082,39 +2085,44 @@ def create_strategy_page(theme='dark'):
             ], className="insights-grid")
         ], className="insights-container", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '20px', 'borderRadius': '12px', 'marginBottom': '20px'}),
         
-        # Chart Justifications
+        # ============================================================
+        # CHART JUSTIFICATIONS - UPDATED
+        # ============================================================
         html.Div([
             html.H3("📋 Chart Justifications", className="insights-title", style={'color': text_color}),
             html.Div([
                 html.Div([
                     html.Span("📊 ", style={'fontSize': '20px'}),
                     html.Span("1. Density Heatmap: ", style={'fontWeight': 'bold', 'color': text_color}),
-                    html.Span("Shows where records concentrate with mean trend line.", style={'color': text_color})
+                    html.Span("Displays where pit-stop records are most concentrated while avoiding scatterplot overlap. The mean trend line highlights the overall relationship between pit-stop duration and positions gained.", style={'color': text_color})
                 ], className="insight-item", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}'}),
+
                 html.Div([
                     html.Span("📦 ", style={'fontSize': '20px'}),
                     html.Span("2. Box Plot: ", style={'fontWeight': 'bold', 'color': text_color}),
-                    html.Span("Compares constructor pit-stop consistency with median and outliers.", style={'color': text_color})
+                    html.Span("Compares pit-stop consistency across constructors using median, spread, and outliers. Ordering by median makes constructor performance easier to compare.", style={'color': text_color})
                 ], className="insight-item", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}'}),
+
                 html.Div([
                     html.Span("📊 ", style={'fontSize': '20px'}),
                     html.Span("3. Histogram: ", style={'fontWeight': 'bold', 'color': text_color}),
-                    html.Span("Identifies normal pit-stop range and long-tail stops.", style={'color': text_color})
+                    html.Span("Shows the distribution of pit-stop durations, revealing the common stop range and unusually long pit stops. Quartile reference lines provide additional context.", style={'color': text_color})
                 ], className="insight-item", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}'}),
+
                 html.Div([
                     html.Span("🏁 ", style={'fontSize': '20px'}),
                     html.Span("4. Dumbbell Chart: ", style={'fontWeight': 'bold', 'color': text_color}),
-                    html.Span("Shows grid→finish movement with color encoding gain/loss.", style={'color': text_color})
+                    html.Span("Visualizes each driver's movement from grid to finish position within a race. Color indicates positions gained or lost, while marker size represents pit-stop count.", style={'color': text_color})
                 ], className="insight-item", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}'}),
+
                 html.Div([
                     html.Span("🔗 ", style={'fontSize': '20px'}),
                     html.Span("5. Correlation Heatmap: ", style={'fontWeight': 'bold', 'color': text_color}),
-                    html.Span("Identifies patterns between strategy metrics and outcomes.", style={'color': text_color})
+                    html.Span("Provides an overview of relationships between strategy variables and race outcomes. It highlights positive and negative correlations without implying causation.", style={'color': text_color})
                 ], className="insight-item", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}'})
             ], className="insights-grid")
         ], className="insights-container", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '20px', 'borderRadius': '12px', 'marginBottom': '20px'})
     ])
-
 
 # ============================================================
 # SLOT 8: CIRCUIT INTELLIGENCE PAGE
