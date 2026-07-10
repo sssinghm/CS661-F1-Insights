@@ -1,110 +1,109 @@
 # 🏎️ F1 Visual Analytics Dashboard
 
-An interactive **Formula 1 analytics dashboard** built using **Dash** and **Plotly** to explore driver, constructor, circuit, championship, and race strategy data through rich interactive visualizations.
+An interactive **Formula 1 Visual Analytics Dashboard** built using **Dash** and **Plotly**. The dashboard enables users to explore Formula 1 data through interactive visualizations covering championship evolution, driver performance, constructor analysis, circuit intelligence, race strategy, and qualifying insights.
 
-![Python](https://img.shields.io/badge/Python-3.8+-blue)
-![Dash](https://img.shields.io/badge/Dash-2.17-red)
-![Plotly](https://img.shields.io/badge/Plotly-5.24-green)
-![License](https://img.shields.io/badge/License-Educational-orange)
-
----
-
-## 📌 Overview
-
-The F1 Visual Analytics Dashboard transforms Formula 1 race data into an interactive exploration platform.
-
-Users can analyze:
-
-- 🏆 Championship standings
-- 🏎️ Driver performance
-- 🏭 Constructor evolution
-- 🏁 Circuit intelligence
-- 📈 Race strategies
-- ⚡ Qualifying vs Race performance
-- 📊 Season-level statistics
-
-The dashboard features an F1-inspired modern interface with responsive visualizations and interactive filtering.
+![Python](https://img.shields.io/badge/Python-3.13-blue?logo=python)
+![Dash](https://img.shields.io/badge/Dash-4.3.0-red?logo=plotly)
+![Plotly](https://img.shields.io/badge/Plotly-6.8.0-blueviolet)
+![License](https://img.shields.io/badge/License-Educational-green)
 
 ---
 
-## ✨ Features
+# 📖 Overview
 
-### 📊 Overview
+The **F1 Visual Analytics Dashboard** transforms Formula 1 race data into an interactive analytics platform.
+
+Users can:
+
+- 📊 Explore season-wise race statistics
+- 🏆 Analyze championship standings
+- 🏎 Compare driver performances
+- 🏭 Study constructor evolution
+- 🏁 Visualize circuit intelligence
+- 📈 Understand race strategies
+- ⚡ Compare qualifying and race performance
+
+The dashboard is built with a modern Formula 1 inspired interface featuring responsive layouts, interactive filters, maps, and advanced visualizations.
+
+---
+
+# ✨ Features
+
+## 📊 Overview
 - KPI Cards
-- Season coverage
-- Interactive world circuit map
-- Constructor participation heatmap
-- Race calendar
-- Driver statistics table
+- Season Coverage
+- Interactive Circuit Map
+- Constructor Participation Heatmap
+- Race Calendar
+- Driver Statistics Table
 
-### 🏆 Championship
-- Top drivers
-- Championship progression
-- Historical champions
-- Driver standings
-- Team and season filters
+## 🏆 Championship Evolution
+- Top Drivers
+- Championship Progression
+- Historical Champions
+- Driver Standings
+- Season Filters
 
-### 🏎️ Driver Performance
-- Driver comparison
+## 🏎 Driver Performance
+- Driver Comparison
 - Performance KPIs
-- Finish progression
-- Radar chart
-- Finish distribution
+- Finish Position Timeline
+- Radar Chart
+- Finish Distribution
 
-### 🏭 Constructor Evolution
-- Constructor comparison
-- Points progression
-- DNF analysis
-- Points share
+## 🏭 Constructor Evolution
+- Constructor Comparison
+- Points Progression
+- DNF Analysis
 - Leaderboards
 - CSV Export
 
-### 🏁 Circuit Intelligence
-- Interactive circuit map
-- Circuit rankings
-- Performance heatmap
-- Bubble analysis
-- Dynamic insights
+## 🏁 Circuit Intelligence
+- Interactive World Map
+- Circuit Rankings
+- Performance Heatmap
+- Bubble Analysis
+- Dynamic Insights
 
-### 📈 Race Strategy
-- Pit stop analysis
-- Constructor consistency
-- Strategy distribution
-- Grid vs Finish movement
-- Correlation analysis
+## 📈 Race Strategy
+- Pit Stop Analysis
+- Constructor Consistency
+- Grid to Finish Analysis
+- Strategy Correlations
 
-### ⚡ Qualifying vs Race
-- Grid vs Finish scatter plot
-- Density heatmap
-- Correlation matrix
+## ⚡ Qualifying vs Race
+- Grid vs Finish Scatter Plot
+- Density Heatmap
+- Correlation Matrix
 - Performance KPIs
 
 ---
 
-## 🛠 Tech Stack
+# 🛠 Tech Stack
 
 | Category | Technology |
-|----------|------------|
+|-----------|------------|
+| Language | Python 3.13 |
 | Framework | Dash |
 | Visualization | Plotly |
 | Backend | Flask |
-| Maps | Dash Leaflet |
 | UI | Dash Bootstrap Components |
+| Maps | Dash Leaflet |
 | Data Processing | Pandas, NumPy |
-| Language | Python |
+| Styling | CSS |
 
 ---
 
-## 📂 Project Structure
+# 📁 Project Structure
 
-```
-F1-Visual-Analytics-Dashboard
+```text
+F1-Visual-Analytics-Dashboard/
 │
 ├── app.py
 ├── requirements.txt
-├── README.md              
-├── start.bat
+├── README.md
 ├── setup.bat
+├── start.bat
 │
 ├── assets/
 │   └── style.css
@@ -119,34 +118,63 @@ F1-Visual-Analytics-Dashboard
 └── src/
     ├── data_loader.py
     └── filter.py
+```
 
-## 🚀 Installation
+---
 
-Clone the repository
+# 🚀 Installation
+
+## 1. Clone the repository
 
 ```bash
 git clone https://github.com/your-username/F1-Visual-Analytics-Dashboard.git
-```
-
-Move into the project
-
-```bash
 cd F1-Visual-Analytics-Dashboard
 ```
 
-Install dependencies
+---
+
+## 2. Install Dependencies
+
+### Recommended (Windows)
+
+Simply run
+
+```bash
+setup.bat
+```
+
+The setup script automatically:
+
+- ✔ Checks Python installation
+- ✔ Installs all required packages
+- ✔ Verifies installation
+- ✔ Prepares the dashboard for execution
+
+---
+
+### Manual Installation
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Run the dashboard
+---
+
+# ▶️ Run the Dashboard
+
+If you used the setup script
+
+```bash
+start.bat
+```
+
+or
 
 ```bash
 python app.py
 ```
 
-Open
+Open your browser and visit
 
 ```
 http://127.0.0.1:8050
@@ -154,51 +182,76 @@ http://127.0.0.1:8050
 
 ---
 
-## 📁 Dataset
+# 📂 Dataset
 
-The dashboard uses a cleaned Formula 1 dataset containing:
+The dashboard uses a cleaned Formula 1 dataset.
+
+Place the dataset inside
+
+```
+data/master_f1_final_dnf_fixed.csv
+```
+
+Dataset includes:
 
 - Seasons (2019–2024)
 - Drivers
 - Constructors
 - Circuits
 - Race Results
+- Championship Points
 - Pit Stops
 - Qualifying Results
-- Championship Points
-
-Place the dataset inside:
-
-```
-data/master_f1_final_dnf_fixed.csv
-```
+- DNFs
+- Fastest Laps
 
 ---
 
-## 📸 Dashboard Preview
+# 📊 Dashboard Pages
 
-Add screenshots here.
+| Page | Description |
+|------|-------------|
+| 📊 Overview | High-level dataset summary |
+| 🏆 Championship | Championship standings and progression |
+| 🏎 Driver Performance | Individual driver analysis |
+| 🏭 Constructor Evolution | Team performance comparison |
+| 🏁 Circuit Intelligence | Circuit analytics and insights |
+| 📈 Race Strategy | Pit stop and strategy analysis |
+| ⚡ Qualifying vs Race | Grid position vs finishing position |
+
+---
+
+# 📸 Screenshots
+
+Add screenshots inside
 
 ```
 assets/screenshots/
-├── overview.png
-├── championship.png
-├── driver.png
-├── constructor.png
-├── circuit.png
-├── strategy.png
-└── qualifying.png
 ```
 
-Example:
+Example
 
 ```markdown
 ![Overview](assets/screenshots/overview.png)
+
+![Championship](assets/screenshots/championship.png)
+
+![Drivers](assets/screenshots/drivers.png)
+
+![Constructors](assets/screenshots/constructors.png)
+
+![Circuits](assets/screenshots/circuits.png)
+
+![Race Strategy](assets/screenshots/strategy.png)
+
+![Qualifying](assets/screenshots/qualifying.png)
 ```
 
 ---
 
-## 📈 Visualizations Used
+# 📈 Visualizations Used
+
+The dashboard combines multiple visualization techniques including:
 
 - Bar Charts
 - Line Charts
@@ -213,19 +266,20 @@ Example:
 
 ---
 
-## 🔮 Future Enhancements
+# 🔮 Future Enhancements
 
-- Driver head-to-head comparison
-- Weather impact analysis
-- Tire strategy visualization
-- Race prediction
-- Real-time F1 data
-- Export reports
-- User authentication
+- Driver Head-to-Head Comparison
+- Tire Strategy Analysis
+- Weather Impact Analysis
+- Race Prediction Models
+- Real-Time Formula 1 Data
+- Export Dashboard Reports
+- User Authentication
+- Advanced Filtering
 
 ---
 
-## 👥 Team
+# 👨‍💻 Team
 
 **Course:** CS661 – Visual Analytics
 
@@ -233,13 +287,17 @@ Example:
 
 ---
 
-## 📚 Acknowledgements
+# 🙏 Acknowledgements
 
 - Formula 1
 - Plotly
 - Dash
+- Dash Bootstrap Components
 - Dash Leaflet
 - OpenStreetMap
-- Bootstrap
-- Kaggle
+- Kaggle Formula 1 Dataset
 
+---
+If you found this project useful, please consider giving it a ⭐ on GitHub.
+
+It helps others discover the project and motivates future improvements.
