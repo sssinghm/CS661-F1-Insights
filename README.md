@@ -1,29 +1,29 @@
 # 🏎️ F1 Visual Analytics Dashboard
 
-An interactive **Formula 1 Visual Analytics Dashboard** built using **Dash** and **Plotly**. The dashboard enables users to explore Formula 1 data through interactive visualizations covering championship evolution, driver performance, constructor analysis, circuit intelligence, race strategy, and qualifying insights.
+An interactive **Formula 1 Visual Analytics Dashboard** built with **Dash** and **Plotly** that transforms Formula 1 race data into insightful and interactive visualizations. The dashboard enables users to explore championship standings, driver and constructor performance, circuit intelligence, race strategies, and qualifying analysis through an intuitive web interface.
 
 ![Python](https://img.shields.io/badge/Python-3.13-blue?logo=python)
 ![Dash](https://img.shields.io/badge/Dash-4.3.0-red?logo=plotly)
 ![Plotly](https://img.shields.io/badge/Plotly-6.8.0-blueviolet)
-![License](https://img.shields.io/badge/License-Educational-green)
+![Status](https://img.shields.io/badge/Status-Completed-success)
 
 ---
 
 # 📖 Overview
 
-The **F1 Visual Analytics Dashboard** transforms Formula 1 race data into an interactive analytics platform.
+The **F1 Visual Analytics Dashboard** provides an interactive platform for exploring Formula 1 data using modern visualization techniques.
 
-Users can:
+The dashboard allows users to:
 
-- 📊 Explore season-wise race statistics
-- 🏆 Analyze championship standings
-- 🏎 Compare driver performances
-- 🏭 Study constructor evolution
-- 🏁 Visualize circuit intelligence
-- 📈 Understand race strategies
-- ⚡ Compare qualifying and race performance
+- 🏆 Analyze Championship Standings
+- 🏎 Compare Driver Performance
+- 🏭 Study Constructor Evolution
+- 🏁 Explore Circuit Intelligence
+- 📈 Analyze Race Strategies
+- ⚡ Compare Qualifying and Race Performance
+- 📊 Explore Season-wise Statistics
 
-The dashboard is built with a modern Formula 1 inspired interface featuring responsive layouts, interactive filters, maps, and advanced visualizations.
+Built using **Dash**, **Plotly**, and **Dash Bootstrap Components**, the application features a responsive Formula 1-inspired interface with interactive filters, maps, and charts.
 
 ---
 
@@ -55,11 +55,11 @@ The dashboard is built with a modern Formula 1 inspired interface featuring resp
 - Constructor Comparison
 - Points Progression
 - DNF Analysis
-- Leaderboards
+- Constructor Leaderboards
 - CSV Export
 
 ## 🏁 Circuit Intelligence
-- Interactive World Map
+- Interactive Circuit Map
 - Circuit Rankings
 - Performance Heatmap
 - Bubble Analysis
@@ -68,8 +68,9 @@ The dashboard is built with a modern Formula 1 inspired interface featuring resp
 ## 📈 Race Strategy
 - Pit Stop Analysis
 - Constructor Consistency
+- Strategy Distribution
 - Grid to Finish Analysis
-- Strategy Correlations
+- Correlation Heatmap
 
 ## ⚡ Qualifying vs Race
 - Grid vs Finish Scatter Plot
@@ -122,9 +123,38 @@ F1-Visual-Analytics-Dashboard/
 
 ---
 
+# ⚡ Quick Start
+
+Clone the repository
+
+```bash
+git clone https://github.com/your-username/F1-Visual-Analytics-Dashboard.git
+cd F1-Visual-Analytics-Dashboard
+```
+
+Run the setup
+
+```bash
+setup.bat
+```
+
+Start the dashboard
+
+```bash
+start.bat
+```
+
+Open your browser
+
+```
+http://127.0.0.1:8050
+```
+
+---
+
 # 🚀 Installation
 
-## 1. Clone the repository
+## Step 1 — Clone the Repository
 
 ```bash
 git clone https://github.com/your-username/F1-Visual-Analytics-Dashboard.git
@@ -133,11 +163,9 @@ cd F1-Visual-Analytics-Dashboard
 
 ---
 
-## 2. Install Dependencies
+## Step 2 — Run Setup
 
-### Recommended (Windows)
-
-Simply run
+Before running the dashboard, execute:
 
 ```bash
 setup.bat
@@ -145,36 +173,41 @@ setup.bat
 
 The setup script automatically:
 
-- ✔ Checks Python installation
-- ✔ Installs all required packages
-- ✔ Verifies installation
-- ✔ Prepares the dashboard for execution
+- ✔ Checks the installed Python version
+- ✔ Installs NumPy
+- ✔ Installs Pandas
+- ✔ Installs Dash
+- ✔ Installs Plotly
+- ✔ Installs Dash Bootstrap Components
+- ✔ Verifies the installation
 
----
+After successful installation, you should see:
 
-### Manual Installation
+```text
+✔ Dash installed!
+✔ Plotly installed!
+✔ Pandas installed!
+✔ NumPy installed!
+✔ Dash Bootstrap installed!
 
-```bash
-pip install -r requirements.txt
+✔ Setup Complete!
 ```
 
+> **Run `setup.bat` only once**, or whenever project dependencies are updated.
+
 ---
 
-# ▶️ Run the Dashboard
+## Step 3 — Start the Dashboard
 
-If you used the setup script
+Once setup completes successfully, launch the dashboard by running:
 
 ```bash
 start.bat
 ```
 
-or
+The application will start automatically.
 
-```bash
-python app.py
-```
-
-Open your browser and visit
+Open your browser and navigate to
 
 ```
 http://127.0.0.1:8050
@@ -184,26 +217,25 @@ http://127.0.0.1:8050
 
 # 📂 Dataset
 
-The dashboard uses a cleaned Formula 1 dataset.
-
-Place the dataset inside
+Place the dataset inside the **data** folder.
 
 ```
-data/master_f1_final_dnf_fixed.csv
+data/
+└── master_f1_final_dnf_fixed.csv
 ```
 
-Dataset includes:
+The dataset contains information about:
 
-- Seasons (2019–2024)
+- Formula 1 Seasons
 - Drivers
 - Constructors
 - Circuits
 - Race Results
 - Championship Points
 - Pit Stops
-- Qualifying Results
 - DNFs
 - Fastest Laps
+- Qualifying Results
 
 ---
 
@@ -211,17 +243,17 @@ Dataset includes:
 
 | Page | Description |
 |------|-------------|
-| 📊 Overview | High-level dataset summary |
+| 📊 Overview | Dataset summary and statistics |
 | 🏆 Championship | Championship standings and progression |
-| 🏎 Driver Performance | Individual driver analysis |
-| 🏭 Constructor Evolution | Team performance comparison |
-| 🏁 Circuit Intelligence | Circuit analytics and insights |
-| 📈 Race Strategy | Pit stop and strategy analysis |
-| ⚡ Qualifying vs Race | Grid position vs finishing position |
+| 🏎 Driver Performance | Driver comparison and performance analysis |
+| 🏭 Constructor Evolution | Constructor comparison and historical trends |
+| 🏁 Circuit Intelligence | Circuit analytics and interactive maps |
+| 📈 Race Strategy | Strategy and pit stop analysis |
+| ⚡ Qualifying vs Race | Qualifying vs finishing position analysis |
 
 ---
 
-# 📸 Screenshots
+# 📸 Dashboard Screenshots
 
 Add screenshots inside
 
@@ -229,7 +261,7 @@ Add screenshots inside
 assets/screenshots/
 ```
 
-Example
+Example:
 
 ```markdown
 ![Overview](assets/screenshots/overview.png)
@@ -242,7 +274,7 @@ Example
 
 ![Circuits](assets/screenshots/circuits.png)
 
-![Race Strategy](assets/screenshots/strategy.png)
+![Strategy](assets/screenshots/strategy.png)
 
 ![Qualifying](assets/screenshots/qualifying.png)
 ```
@@ -251,31 +283,31 @@ Example
 
 # 📈 Visualizations Used
 
-The dashboard combines multiple visualization techniques including:
+The dashboard combines several visualization techniques:
 
-- Bar Charts
-- Line Charts
-- Scatter Plots
-- Heatmaps
-- Radar Charts
-- Box Plots
-- Bubble Charts
-- Donut Charts
-- Interactive Maps
-- Dumbbell Charts
+- 📊 Bar Charts
+- 📈 Line Charts
+- 🎯 Scatter Plots
+- 🔥 Heatmaps
+- 🕸 Radar Charts
+- 📦 Box Plots
+- 🫧 Bubble Charts
+- 🍩 Donut Charts
+- 🌍 Interactive Maps
+- ↔ Dumbbell Charts
 
 ---
 
 # 🔮 Future Enhancements
 
 - Driver Head-to-Head Comparison
-- Tire Strategy Analysis
 - Weather Impact Analysis
+- Tire Strategy Visualization
 - Race Prediction Models
-- Real-Time Formula 1 Data
+- Live Formula 1 Data Integration
 - Export Dashboard Reports
+- Advanced Dashboard Filters
 - User Authentication
-- Advanced Filtering
 
 ---
 
@@ -298,6 +330,3 @@ The dashboard combines multiple visualization techniques including:
 - Kaggle Formula 1 Dataset
 
 ---
-If you found this project useful, please consider giving it a ⭐ on GitHub.
-
-It helps others discover the project and motivates future improvements.
