@@ -1304,97 +1304,156 @@ def create_qualifying_page(theme='dark'):
     min_year, max_year = int(df_clean['year'].min()), int(df_clean['year'].max())
     
     # ============================================================
-    # BUILD SCATTER PLOT (with filters applied via callback)
-    # ============================================================
-    
-    # ============================================================
     # BUILD PAGE WITH FILTERS
     # ============================================================
     return html.Div([
+        # ---- Header : angled band, timing-tower eyebrow ----
         html.Div([
-            html.H2([html.Span("⚡ "), "Qualifying vs Race"]),
-            html.P("Grid position vs. finishing position — how often does qualifying decide the race?", 
-                   className="text-muted mb-0"),
-        ], id="app-header", style={
-            "background": f"linear-gradient(120deg, {SURFACE_RAISED} 0%, {SURFACE} 70%)",
-            "borderBottom": f"3px solid {ACCENT_RED}",
-            "borderRadius": "14px",
-            "padding": "22px 28px",
-            "marginTop": "18px",
-            "marginBottom": "18px",
-            "boxShadow": "0 8px 24px rgba(0,0,0,0.35)"
+            html.Div([
+                html.Span("SESSION DATA · ", className='mono', style={'color': MUTED, 'fontSize': '12px'}),
+                html.Span(f"{min_year}–{max_year}", className='mono', style={'color': AMBER, 'fontSize': '12px', 'letterSpacing': '1px'}),
+            ], style={'marginBottom': '6px'}),
+            html.H1("RACE PREDICTABILITY", className='brand-font', style={
+                'color': INK, 'fontSize': '34px', 'fontWeight': '600',
+                'letterSpacing': '1px', 'margin': '0', 'textTransform': 'uppercase'
+            }),
+            html.P("Grid position vs. finishing position — how often does qualifying decide the race?",
+                   style={'color': MUTED, 'margin': '6px 0 0 0', 'fontSize': '13px'})
+        ], style={
+            'padding': '30px 36px 22px 36px',
+            'borderBottom': f'1px solid {HAIRLINE}',
+            'background': f'linear-gradient(90deg, {AMBER_DIM} 0%, transparent 35%)'
         }),
-        
-        # ============================================================
-        # FILTERS
-        # ============================================================
+
         html.Div([
+
+            # ---- Controls row ----
             html.Div([
-                html.Label("📅 Season:", style={'color': text_color, 'fontWeight': 'bold', 'marginRight': '10px'}),
-                dcc.Dropdown(
-                    id='qualifying-year-filter',
-                    options=[{'label': 'All Years', 'value': 'all'}] + [{'label': str(y), 'value': y} for y in available_years],
-                    value='all',
-                    clearable=False,
-                    style={'width': '200px', 'backgroundColor': '#ffffff', 'color': '#000000', 'border': '1px solid #cccccc', 'borderRadius': '4px'}
-                )
-            ], style={'display': 'flex', 'alignItems': 'center', 'marginRight': '20px'}),
-            
+                html.Div([
+                    html.Div("MODE", className='mono', style={
+                        'fontSize': '10px', 'letterSpacing': '1.5px', 'color': MUTED, 'marginBottom': '10px'
+                    }),
+                    dcc.RadioItems(
+                        id='view-mode',
+                        options=[
+                            {'label': 'COMPARE TEAMS', 'value': 'multi'},
+                            {'label': 'ISOLATE ONE', 'value': 'single'}
+                        ],
+                        value='multi', inline=True, className='toggle-group',
+                        style={'color': INK}  # Make radio text visible
+                    ),
+                ], style={'width': '22%', 'display': 'inline-block', 'verticalAlign': 'top'}),
+
+                html.Div([
+                    html.Div("CONSTRUCTOR(S)", className='mono', style={
+                        'fontSize': '10px', 'letterSpacing': '1.5px', 'color': MUTED, 'marginBottom': '10px'
+                    }),
+                    dcc.Dropdown(
+                        id='team-filter',
+                        options=[{'label': t, 'value': t} for t in unique_teams],
+                        value=['Red Bull', 'Mercedes', 'Ferrari'] if 'Red Bull' in unique_teams else unique_teams[:3],
+                        multi=True,
+                        style={
+                            'color': '#000000',  # Dropdown text color
+                            'backgroundColor': '#ffffff'
+                        },
+                        className='dark-dropdown'  # Custom class for styling
+                    )
+                ], style={'width': '38%', 'display': 'inline-block', 'verticalAlign': 'top', 'padding': '0 24px'}),
+
+                html.Div([
+                    html.Div("SEASON SPAN", className='mono', style={
+                        'fontSize': '10px', 'letterSpacing': '1.5px', 'color': MUTED, 'marginBottom': '18px'
+                    }),
+                    dcc.RangeSlider(
+                        id='year-slider',
+                        min=min_year, max=max_year, step=1,
+                        marks={i: {'label': str(i), 'style': {'color': INK}} for i in range(min_year, max_year + 1)},
+                        value=[min_year, min_year],
+                        allowCross=False,  
+                        updatemode='mouseup',
+                        className='dark-slider'  # Custom class for styling
+                    )
+                ], style={'width': '36%', 'display': 'inline-block', 'verticalAlign': 'top'}),
+
+            ], style={
+                'padding': '20px 24px', 'backgroundColor': PANEL,
+                'border': f'1px solid {HAIRLINE}', 'borderRadius': '3px', 'marginBottom': '16px'
+            }),
+
+            # ---- Stat readout strip (signature element) ----
             html.Div([
-                html.Label("🏭 Team:", style={'color': text_color, 'fontWeight': 'bold', 'marginRight': '10px'}),
-                dcc.Dropdown(
-                    id='qualifying-team-filter',
-                    options=[{'label': 'All Teams', 'value': 'all'}] + [{'label': team, 'value': team} for team in available_teams],
-                    value='all',
-                    clearable=False,
-                    style={'width': '250px', 'backgroundColor': '#ffffff', 'color': '#000000', 'border': '1px solid #cccccc', 'borderRadius': '4px'}
-                )
-            ], style={'display': 'flex', 'alignItems': 'center'})
-        ], style={'display': 'flex', 'flexWrap': 'wrap', 'gap': '15px', 'marginBottom': '20px'}),
-        
-        # ============================================================
-        # CHARTS - VERTICAL LAYOUT
-        # ============================================================
-        html.Div([
-            # Chart 1: Scatter Plot (Full Width)
+                html.Div([
+                    html.Div("RESULTS PLOTTED", className='mono', style={
+                        'fontSize': '10px', 'letterSpacing': '1.5px', 'color': MUTED,
+                        'marginBottom': '6px', 'textTransform': 'uppercase'
+                    }),
+                    html.Div(id='stat-count', className='mono', style={
+                        'fontSize': '26px', 'color': AMBER, 'fontWeight': '500', 'lineHeight': '1'
+                    })
+                ], style={
+                    'padding': '14px 20px', 'borderLeft': f'2px solid {AMBER}',
+                    'backgroundColor': PANEL, 'flex': '1'
+                }),
+                html.Div([
+                    html.Div("AVG. POSITIONS GAINED", className='mono', style={
+                        'fontSize': '10px', 'letterSpacing': '1.5px', 'color': MUTED,
+                        'marginBottom': '6px', 'textTransform': 'uppercase'
+                    }),
+                    html.Div(id='stat-avg-gain', className='mono', style={
+                        'fontSize': '26px', 'color': AMBER, 'fontWeight': '500', 'lineHeight': '1'
+                    })
+                ], style={
+                    'padding': '14px 20px', 'borderLeft': f'2px solid {AMBER}',
+                    'backgroundColor': PANEL, 'flex': '1'
+                }),
+                html.Div([
+                    html.Div("MOST IMPROVED DRIVE", className='mono', style={
+                        'fontSize': '10px', 'letterSpacing': '1.5px', 'color': MUTED,
+                        'marginBottom': '6px', 'textTransform': 'uppercase'
+                    }),
+                    html.Div(id='stat-best-drive', className='mono', style={
+                        'fontSize': '26px', 'color': AMBER, 'fontWeight': '500', 'lineHeight': '1'
+                    })
+                ], style={
+                    'padding': '14px 20px', 'borderLeft': f'2px solid {AMBER}',
+                    'backgroundColor': PANEL, 'flex': '1'
+                }),
+            ], style={'display': 'flex', 'gap': '2px', 'marginBottom': '16px'}),
+
+            # ---- Scatter Chart ----
             html.Div([
-                dcc.Loading(
-                    dcc.Graph(id='qualifying-scatter-plot', config={'displayModeBar': True})
-                )
-            ], className="chart-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '15px', 'borderRadius': '12px', 'marginBottom': '20px'}),
-            
-            # Chart 2: Heatmap (Full Width)
+                dcc.Graph(id='f1-scatter-plot', config={'displaylogo': False})
+            ], style={
+                'backgroundColor': PANEL, 'border': f'1px solid {HAIRLINE}',
+                'borderRadius': '3px', 'padding': '16px', 'marginBottom': '16px'
+            }),
+
+            # ---- Heatmap Chart (Frequency) ----
             html.Div([
-                dcc.Loading(
-                    dcc.Graph(id='qualifying-heatmap', config={'displayModeBar': True})
-                )
-            ], className="chart-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '15px', 'borderRadius': '12px', 'marginBottom': '20px'}),
-            
-            # Chart 3: Correlation Matrix (Full Width)
+                html.Div("POSITION DENSITY HEATMAP", className='mono', style={
+                    'fontSize': '11px', 'letterSpacing': '1.5px', 'color': MUTED, 'marginBottom': '12px'
+                }),
+                dcc.Graph(id='f1-heatmap', config={'displaylogo': False})
+            ], style={
+                'backgroundColor': PANEL, 'border': f'1px solid {HAIRLINE}',
+                'borderRadius': '3px', 'padding': '16px', 'marginBottom': '16px'
+            }),
+
+            # ---- Correlation Matrix Heatmap ----
             html.Div([
-                dcc.Loading(
-                    dcc.Graph(id='qualifying-correlation', config={'displayModeBar': True})
-                )
-            ], className="chart-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '15px', 'borderRadius': '12px', 'marginBottom': '20px'})
-        ]),
-        
-        # ============================================================
-        # KEY INSIGHTS
-        # ============================================================
-        html.Div([
-            html.H3("💡 Key Insights", className="insights-title", style={'color': text_color}),
-            html.Div([
-                html.Div(id='qualifying-insight-1', className="insight-item", 
-                        style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '12px 15px', 'borderRadius': '8px'}),
-                html.Div(id='qualifying-insight-2', className="insight-item", 
-                        style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '12px 15px', 'borderRadius': '8px'}),
-                html.Div(id='qualifying-insight-3', className="insight-item", 
-                        style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '12px 15px', 'borderRadius': '8px'}),
-                html.Div(id='qualifying-insight-4', className="insight-item", 
-                        style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '12px 15px', 'borderRadius': '8px'})
-            ], className="insights-grid")
-        ], className="insights-container", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '20px', 'borderRadius': '12px', 'marginBottom': '20px'})
-    ])
+                html.Div("CORRELATION MATRIX", className='mono', style={
+                    'fontSize': '11px', 'letterSpacing': '1.5px', 'color': MUTED, 'marginBottom': '12px'
+                }),
+                dcc.Graph(id='f1-corr-heatmap', config={'displaylogo': False})
+            ], style={
+                'backgroundColor': PANEL, 'border': f'1px solid {HAIRLINE}',
+                'borderRadius': '3px', 'padding': '16px'
+            }),
+
+        ], style={'padding': '0 36px 36px 36px'})
+
+    ], style={'backgroundColor': CARBON, 'minHeight': '100vh'})
 
 
 # ============================================================
@@ -1402,38 +1461,57 @@ def create_qualifying_page(theme='dark'):
 # ============================================================
 def register_qualifying_callbacks(app):
     
+    # ============================================================
+    # Callback 1 — mode toggle
+    # ============================================================
     @app.callback(
-        [Output('qualifying-scatter-plot', 'figure'),
-         Output('qualifying-heatmap', 'figure'),
-         Output('qualifying-correlation', 'figure'),
-         Output('qualifying-insight-1', 'children'),
-         Output('qualifying-insight-2', 'children'),
-         Output('qualifying-insight-3', 'children'),
-         Output('qualifying-insight-4', 'children')],
-        [Input('qualifying-year-filter', 'value'),
-         Input('qualifying-team-filter', 'value')],
-        [State('theme-store', 'data')]
+        [Output('team-filter', 'multi'), Output('team-filter', 'value')],
+        Input('view-mode', 'value'),
+        State('team-filter', 'value')
     )
-    def update_qualifying_charts(year_filter, team_filter, theme):
-        df = load_data()
-        
-        # Theme colors
-        if theme == 'dark':
-            carbon, panel, grid_line, ink, muted, amber = '#15171C', '#1B1E26', 'rgba(237,233,225,0.06)', '#FFFFFF', '#C7CCD6', '#FFB100'
+    def update_dropdown_mode(mode, current_value):
+        if mode == 'single':
+            val = current_value[0] if isinstance(current_value, list) and current_value else 'Red Bull'
+            return False, val
         else:
-            carbon, panel, grid_line, ink, muted, amber = '#f8f9fa', '#ffffff', 'rgba(0,0,0,0.06)', '#1a1a2e', '#666666', '#ff6b35'
+            val = [current_value] if isinstance(current_value, str) else current_value
+            if not val:
+                val = ['Red Bull', 'Mercedes', 'Ferrari']
+            return True, val
+
+    # ============================================================
+    # Callback 2 — graph + stat readouts + heatmap
+    # ============================================================
+    @app.callback(
+        [Output('f1-scatter-plot', 'figure'),
+         Output('f1-heatmap', 'figure'),
+         Output('f1-corr-heatmap', 'figure'),
+         Output('stat-count', 'children'),
+         Output('stat-avg-gain', 'children'),
+         Output('stat-best-drive', 'children')],
+        [Input('team-filter', 'value'),
+         Input('year-slider', 'value')]
+    )
+    def update_graph(selected_teams, year_range):
+        df = load_data()
+        fig_scatter = go.Figure()
+
+        # Base diagonal line for scatter
+        fig_scatter.add_shape(
+            type="line", layer="below", x0=1, y0=1, x1=20, y1=20,
+            line=dict(color="rgba(237,233,225,0.22)", width=1.5, dash="dash")
+        )
+
+        if isinstance(selected_teams, str):
+            selected_teams = [selected_teams]
+        if not selected_teams:
+            selected_teams = []
+
+        year_lo, year_hi = sorted([int(y) for y in year_range])
         
         # Clean data
         df_clean = df[(df['grid'] >= 1) & (df['grid'] <= 20) &
                       (df['positionOrder'] >= 1) & (df['positionOrder'] <= 20)].copy()
-        
-        # Apply year filter
-        if year_filter != 'all':
-            df_clean = df_clean[df_clean['year'] == year_filter]
-        
-        # Apply team filter
-        if team_filter != 'all':
-            df_clean = df_clean[df_clean['constructor_name'] == team_filter]
         
         # Add jittered columns
         np.random.seed(42)
@@ -1446,7 +1524,6 @@ def register_qualifying_callbacks(app):
             df_clean['positions_gained'].astype(str), df_clean['status']
         ), axis=-1))
         
-        # F1 Team Colors
         f1_team_colors = {
             'Ferrari': '#DC0000', 'Red Bull': '#3671C6', 'Mercedes': '#27F4D2',
             'McLaren': '#FF8000', 'Aston Martin': '#00A19C', 'Alpine F1 Team': '#FF87BC',
@@ -1455,149 +1532,134 @@ def register_qualifying_callbacks(app):
             'Alfa Romeo': '#C92D4B', 'Williams': '#64C4FF', 'Haas F1 Team': '#B6BABD'
         }
         
-        unique_teams = sorted([team for team in f1_team_colors.keys() if team in df_clean['constructor_name'].unique()])
-        
-        # ============================================================
-        # SCATTER PLOT
-        # ============================================================
-        fig_scatter = go.Figure()
-        fig_scatter.add_shape(type="line", layer="below", x0=1, y0=1, x1=20, y1=20,
-                             line=dict(color="rgba(237,233,225,0.22)", width=1.5, dash="dash"))
-        
-        for team in unique_teams[:10]:
-            team_df = df_clean[df_clean['constructor_name'] == team]
+        mask = (df_clean['year'] >= year_lo) & (df_clean['year'] <= year_hi) & \
+               (df_clean['constructor_name'].isin(selected_teams))
+        filtered_df = df_clean[mask]
+
+        # Populate Scatter Plot
+        for team in selected_teams:
+            team_df = filtered_df[filtered_df['constructor_name'] == team]
+            
             fig_scatter.add_trace(go.Scatter(
                 x=team_df['grid_jittered'], y=team_df['position_jittered'],
                 mode='markers', name=team,
-                marker=dict(color=f1_team_colors.get(team, '#FFFFFF'), size=9, opacity=0.88,
-                           line=dict(width=1, color='rgba(237,233,225,0.45)')),
+                marker=dict(
+                    color=f1_team_colors.get(team, '#FFFFFF'), size=9, opacity=0.88,
+                    line=dict(width=1, color='rgba(237,233,225,0.45)')
+                ),
                 text=team_df['driver_name'] if not team_df.empty else [],
                 customdata=team_df['customdata'].tolist() if not team_df.empty else [],
                 hovertemplate="<b>%{text}</b> (%{customdata[0]})<br>Team: " + team +
                               "<br>GP: %{customdata[1]}<br>Started: P%{customdata[2]} | Finished: P%{customdata[3]}" +
                               "<br>Net Change: %{customdata[4]} positions<br>Status: %{customdata[5]}<extra></extra>"
             ))
-        
+
+        # Configure Scatter Layout
         fig_scatter.update_layout(
-            title="Grid Position vs Finish Position",
-            xaxis_title="Starting Grid Position",
-            yaxis_title="Final Finish Position",
-            plot_bgcolor=panel,
-            paper_bgcolor=panel,
-            font_color=ink,
-            height=550,
-            xaxis=dict(range=[0.5, 20.5], tickmode='linear', tick0=1, dtick=1, gridcolor=grid_line, zeroline=False),
-            yaxis=dict(range=[0.5, 20.5], tickmode='linear', tick0=1, dtick=1, gridcolor=grid_line, zeroline=False),
-            legend=dict(title=dict(text='TEAM'), bgcolor='rgba(0,0,0,0)')
+            uirevision='constant', paper_bgcolor=PANEL, plot_bgcolor=PANEL,
+            font=dict(family='IBM Plex Mono, monospace', color=INK, size=12),
+            xaxis=dict(title='STARTING GRID POSITION', range=[0.5, 20.5], tickmode='linear', tick0=1, dtick=1, gridcolor=GRID_LINE, zeroline=False, color=MUTED, linecolor=HAIRLINE, title_font=dict(size=11)),
+            yaxis=dict(title='FINAL FINISH POSITION', range=[0.5, 20.5], tickmode='linear', tick0=1, dtick=1, gridcolor=GRID_LINE, zeroline=False, color=MUTED, linecolor=HAIRLINE, title_font=dict(size=11)),
+            height=550, margin=dict(l=50, r=20, t=16, b=50),
+            legend=dict(title=dict(text='TEAM', font=dict(color=MUTED, size=11)), font=dict(color=INK, size=12), bgcolor='rgba(0,0,0,0)'),
+            hoverlabel=dict(bgcolor=CARBON, font=dict(color=INK, family='IBM Plex Mono, monospace', size=11), bordercolor=HAIRLINE)
         )
-        
-        # ============================================================
-        # HEATMAP
-        # ============================================================
+
+        # Populate Heatmap (Frequency)
         fig_heat = go.Figure(go.Histogram2d(
-            x=df_clean['grid'] if not df_clean.empty else [0],
-            y=df_clean['positionOrder'] if not df_clean.empty else [0],
+            x=filtered_df['grid'] if not filtered_df.empty else [0],
+            y=filtered_df['positionOrder'] if not filtered_df.empty else [0],
             xbins=dict(start=0.5, end=20.5, size=1),
             ybins=dict(start=0.5, end=20.5, size=1),
-            colorscale=[[0.0, carbon], [0.4, '#3A404F'], [1.0, amber]],
+            colorscale=[
+                [0.0, '#15171C'],
+                [0.4, '#3A404F'],
+                [1.0, '#FFB100']
+            ],
             showscale=True,
-            colorbar=dict(title=dict(text="Frequency", font=dict(color=muted, size=10)), tickfont=dict(color=ink)),
+            colorbar=dict(
+                title=dict(
+                    text="Frequency",
+                    font=dict(color=MUTED, family='IBM Plex Mono, monospace', size=10)
+                ),
+                tickfont=dict(color=INK, family='IBM Plex Mono, monospace')
+            ),
             hovertemplate="Grid: P%{x}<br>Finish: P%{y}<br>Count: %{z}<extra></extra>"
         ))
-        fig_heat.add_shape(type="line", layer="above", x0=1, y0=1, x1=20, y1=20,
-                          line=dict(color="rgba(237,233,225,0.4)", width=1.5, dash="dash"))
-        fig_heat.update_layout(
-            title="Position Density Heatmap",
-            xaxis_title="Starting Grid Position",
-            yaxis_title="Final Finish Position",
-            plot_bgcolor=panel,
-            paper_bgcolor=panel,
-            font_color=ink,
-            height=550,
-            xaxis=dict(range=[0.5, 20.5], tickmode='linear', tick0=1, dtick=1, gridcolor=grid_line, zeroline=False),
-            yaxis=dict(range=[0.5, 20.5], tickmode='linear', tick0=1, dtick=1, gridcolor=grid_line, zeroline=False)
+
+        # Base diagonal line for heatmap
+        fig_heat.add_shape(
+            type="line", layer="above", x0=1, y0=1, x1=20, y1=20,
+            line=dict(color="rgba(237,233,225,0.4)", width=1.5, dash="dash")
         )
-        
-        # ============================================================
-        # CORRELATION MATRIX
-        # ============================================================
+
+        # Configure Heatmap Layout
+        fig_heat.update_layout(
+            uirevision='constant_heat', paper_bgcolor=PANEL, plot_bgcolor=PANEL,
+            font=dict(family='IBM Plex Mono, monospace', color=INK, size=12),
+            xaxis=dict(title='STARTING GRID POSITION', range=[0.5, 20.5], tickmode='linear', tick0=1, dtick=1, gridcolor=GRID_LINE, zeroline=False, color=MUTED, linecolor=HAIRLINE, title_font=dict(size=11)),
+            yaxis=dict(title='FINAL FINISH POSITION', range=[0.5, 20.5], tickmode='linear', tick0=1, dtick=1, gridcolor=GRID_LINE, zeroline=False, color=MUTED, linecolor=HAIRLINE, title_font=dict(size=11)),
+            height=550, margin=dict(l=50, r=20, t=16, b=50),
+            hoverlabel=dict(bgcolor=CARBON, font=dict(color=INK, family='IBM Plex Mono, monospace', size=11), bordercolor=HAIRLINE)
+        )
+
+        # ==========================================
+        # Populate Heatmap (Correlation Matrix)
+        # ==========================================
         corr_cols = ['grid', 'positionOrder', 'positions_gained']
         labels = ['Grid Position', 'Finish Position', 'Positions Gained']
         
-        if not df_clean.empty and len(df_clean) > 1:
-            corr_matrix = df_clean[corr_cols].corr()
+        if not filtered_df.empty and len(filtered_df) > 1:
+            corr_matrix = filtered_df[corr_cols].corr()
         else:
             corr_matrix = pd.DataFrame(np.zeros((3, 3)), index=corr_cols, columns=corr_cols)
-        
-        fig_corr = go.Figure(go.Heatmap(
+
+        fig_corr_heat = go.Figure(go.Heatmap(
             z=corr_matrix.values,
             x=labels,
             y=labels,
             zmin=-1, zmax=1,
             text=np.round(corr_matrix.values, 2),
             texttemplate="%{text}",
-            textfont=dict(color=ink, size=14),
-            colorscale=[[0.0, '#DC0000'], [0.5, carbon], [1.0, amber]],
+            textfont=dict(color=INK, family='IBM Plex Mono, monospace', size=14),
+            colorscale=[
+                [0.0, '#DC0000'],
+                [0.5, '#15171C'],
+                [1.0, '#FFB100']
+            ],
             showscale=True,
-            colorbar=dict(title=dict(text="Pearson Corr.", font=dict(color=muted, size=10)), tickfont=dict(color=ink)),
+            colorbar=dict(
+                title=dict(
+                    text="Pearson Corr.",
+                    font=dict(color=MUTED, family='IBM Plex Mono, monospace', size=10)
+                ),
+                tickfont=dict(color=INK, family='IBM Plex Mono, monospace')
+            ),
             hovertemplate="%{x} vs %{y}<br>Correlation: %{z}<extra></extra>"
         ))
-        fig_corr.update_layout(
-            title="Correlation Matrix",
-            plot_bgcolor=panel,
-            paper_bgcolor=panel,
-            font_color=ink,
-            height=450,
-            xaxis=dict(side='bottom', gridcolor=grid_line, color=muted),
-            yaxis=dict(autorange='reversed', gridcolor=grid_line, color=muted)
+
+        fig_corr_heat.update_layout(
+            uirevision='constant_corr', paper_bgcolor=PANEL, plot_bgcolor=PANEL,
+            font=dict(family='IBM Plex Mono, monospace', color=INK, size=12),
+            xaxis=dict(side='bottom', gridcolor=GRID_LINE, color=MUTED, linecolor=HAIRLINE),
+            yaxis=dict(autorange='reversed', gridcolor=GRID_LINE, color=MUTED, linecolor=HAIRLINE),
+            height=550, margin=dict(l=50, r=50, t=30, b=50),
+            hoverlabel=dict(bgcolor=CARBON, font=dict(color=INK, family='IBM Plex Mono, monospace', size=11), bordercolor=HAIRLINE)
         )
-        
-        # ============================================================
-        # INSIGHTS
-        # ============================================================
-        total_results = len(df_clean)
-        avg_gain = df_clean['positions_gained'].mean() if total_results > 0 else 0
-        
-        if total_results > 0:
-            best_row = df_clean.loc[df_clean['positions_gained'].idxmax()]
-            best_drive = f"{best_row['driver_name']} +{int(best_row['positions_gained'])}"
+
+        # ---- Stat readouts ----
+        n_results = len(filtered_df)
+        avg_gain = filtered_df['positions_gained'].mean() if n_results else 0
+        if n_results:
+            best_row = filtered_df.loc[filtered_df['positions_gained'].idxmax()]
+            best_drive = f"{best_row['driver_name'].split()[-1].upper()} +{int(best_row['positions_gained'])}"
         else:
             best_drive = "—"
-        
-        # Get correlation value
-        corr_value = corr_matrix.loc['grid', 'positionOrder'] if 'grid' in corr_matrix.index and 'positionOrder' in corr_matrix.columns else 0
-        
-        insight1 = html.Div([
-            html.Span("🏁 ", style={'fontSize': '20px'}),
-            html.Span("Qualifying matters: ", style={'fontWeight': 'bold'}),
-            html.Span(f"{corr_value:.2f} correlation between grid and finish position", style={'color': '#ff6b35'})
-        ])
-        
-        insight2 = html.Div([
-            html.Span("📈 ", style={'fontSize': '20px'}),
-            html.Span("Average position gain: ", style={'fontWeight': 'bold'}),
-            html.Span(f"{avg_gain:+.2f} positions per driver", style={'color': '#4ecdc4'})
-        ])
-        
-        insight3 = html.Div([
-            html.Span("🏆 ", style={'fontSize': '20px'}),
-            html.Span("Most improved: ", style={'fontWeight': 'bold'}),
-            html.Span(f"{best_drive}", style={'color': '#ffe66d'})
-        ])
-        
-        insight4 = html.Div([
-            html.Span("📊 ", style={'fontSize': '20px'}),
-            html.Span("Total results analyzed: ", style={'fontWeight': 'bold'}),
-            html.Span(f"{total_results:,}", style={'color': '#ff6b6b'})
-        ])
-        
-        return fig_scatter, fig_heat, fig_corr, insight1, insight2, insight3, insight4
 
+        return fig_scatter, fig_heat, fig_corr_heat, f"{n_results:,}", f"{avg_gain:+.2f}", best_drive
 
-# Register the callback
-register_qualifying_callbacks(app)
-
-# ============================================================
+# Register the callbacks
+register_qualifying_callbacks(app)# ============================================================
 # SLOT 7: RACE STRATEGY PAGE - UPDATED WITH NEW JUSTIFICATIONS
 # ============================================================
 def create_strategy_page(theme='dark'):
