@@ -128,7 +128,7 @@ F1-Visual-Analytics-Dashboard/
 Clone the repository
 
 ```bash
-git clone https://github.com/your-username/F1-Visual-Analytics-Dashboard.git
+git clone https://github.com/sssinghm/CS661-F1-Insights.git F1-Visual-Analytics-Dashboard
 cd F1-Visual-Analytics-Dashboard
 ```
 
@@ -157,7 +157,7 @@ http://127.0.0.1:8050
 ## Step 1 — Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/F1-Visual-Analytics-Dashboard.git
+git clone https://github.com/sssinghm/CS661-F1-Insights.git F1-Visual-Analytics-Dashboard
 cd F1-Visual-Analytics-Dashboard
 ```
 
