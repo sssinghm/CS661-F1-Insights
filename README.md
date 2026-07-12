@@ -123,7 +123,7 @@ F1-Visual-Analytics-Dashboard/
 
 ---
 
-# ⚡ Quick Start
+# ⚡ Quick Start (for Windows)
 
 Clone the repository
 
@@ -152,7 +152,7 @@ http://127.0.0.1:8050
 
 ---
 
-# 🚀 Installation
+# 🚀 Installation (for Windows)
 
 ## Step 1 — Clone the Repository
 
