@@ -323,6 +323,332 @@
     color: #1a1a2e;
 }
 
+/* ================================================================ */
+/* ===== QUALIFYING VS RACE PAGE - DROPDOWN FIXES ===== */
+/* ================================================================ */
+
+/* Fix the main dropdown control - make text visible */
+.Select-control {
+    background-color: #ffffff !important;
+    border: 1px solid #cccccc !important;
+    border-radius: 4px !important;
+    min-height: 38px !important;
+}
+
+/* Fix the selected value text - THIS IS THE KEY FIX */
+.Select-value-label {
+    color: #000000 !important;
+    font-weight: 500 !important;
+    font-size: 14px !important;
+}
+
+/* Fix placeholder text */
+.Select-placeholder {
+    color: #666666 !important;
+}
+
+/* Fix the input text */
+.Select-input > input {
+    color: #000000 !important;
+}
+
+/* Fix multi-value tags (when multiple items are selected) */
+.Select-value {
+    background-color: #f0f0f0 !important;
+    color: #000000 !important;
+    border-radius: 2px !important;
+    border-left: 3px solid #FFB100 !important;
+    padding: 2px 8px !important;
+    margin: 2px !important;
+}
+
+.Select-value-label {
+    color: #000000 !important;
+}
+
+.Select-value-icon {
+    color: #000000 !important;
+    border-right: 1px solid #cccccc !important;
+    padding-right: 6px !important;
+    margin-right: 6px !important;
+}
+
+.Select-value-icon:hover {
+    background-color: #e0e0e0 !important;
+    color: #000000 !important;
+}
+
+/* Fix dropdown menu */
+.Select-menu-outer {
+    background-color: #ffffff !important;
+    border: 1px solid #cccccc !important;
+    border-radius: 4px !important;
+    margin-top: 2px !important;
+    z-index: 99999 !important;
+}
+
+/* Fix dropdown options */
+.Select-option {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    padding: 10px 15px !important;
+    cursor: pointer !important;
+}
+
+.Select-option.is-focused {
+    background-color: #f0f0f0 !important;
+    color: #000000 !important;
+}
+
+.Select-option.is-selected {
+    background-color: #FFB100 !important;
+    color: #000000 !important;
+}
+
+.Select-option:hover {
+    background-color: #f0f0f0 !important;
+    color: #000000 !important;
+}
+
+/* Fix when dropdown is open */
+.is-open .Select-control {
+    background-color: #ffffff !important;
+    border-color: #FFB100 !important;
+}
+
+.has-value .Select-control {
+    background-color: #ffffff !important;
+}
+
+/* Fix arrow and clear buttons */
+.Select-clear-zone {
+    color: #000000 !important;
+}
+
+.Select-arrow-zone {
+    color: #000000 !important;
+}
+
+.Select-arrow {
+    border-color: #000000 transparent transparent transparent !important;
+}
+
+/* Fix multi-value wrapper */
+.Select-multi-value-wrapper {
+    color: #000000 !important;
+}
+
+/* Force all dropdown text to be black */
+.dark-dropdown .Select-value-label,
+.dark-dropdown .Select-placeholder,
+.dark-dropdown .Select-input > input,
+.dark-dropdown .Select-option,
+.dark-dropdown .Select-clear-zone,
+.dark-dropdown .Select-arrow-zone {
+    color: #000000 !important;
+}
+
+/* For the specific constructor dropdown */
+#team-filter .Select-value-label {
+    color: #000000 !important;
+}
+
+#team-filter .Select-placeholder {
+    color: #666666 !important;
+}
+
+#team-filter .Select-control {
+    background-color: #ffffff !important;
+    border-color: #cccccc !important;
+}
+
+/* Ensure the dropdown container doesn't hide text */
+.Select--multi .Select-value {
+    background-color: #f0f0f0 !important;
+    color: #000000 !important;
+}
+
+/* Fix for the dropdown when in dark theme */
+[data-theme="dark"] .Select-value-label,
+body.dark-theme .Select-value-label {
+    color: #000000 !important;
+}
+
+/* Force override for any white text */
+.Select-value-label,
+.Select-value-label *,
+.Select-value-label span {
+    color: #000000 !important;
+}
+
+/* ================================================================ */
+/* ===== QUALIFYING VS RACE PAGE - SLIDER FIXES ===== */
+/* ================================================================ */
+
+/* Make slider labels visible on dark background */
+.dark-slider .rc-slider-mark-text {
+    color: #FFFFFF !important;
+    font-size: 11px !important;
+    font-family: 'IBM Plex Mono', monospace !important;
+}
+
+.dark-slider .rc-slider-mark-text-active {
+    color: #FFB100 !important;
+}
+
+.dark-slider .rc-slider-track {
+    background-color: #FFB100 !important;
+    height: 3px !important;
+}
+
+.dark-slider .rc-slider-rail {
+    background-color: #2B2F39 !important;
+    height: 3px !important;
+}
+
+.dark-slider .rc-slider-handle {
+    border: 2px solid #FFB100 !important;
+    background-color: #15171C !important;
+    width: 14px !important;
+    height: 14px !important;
+    margin-top: -6px !important;
+    opacity: 1 !important;
+}
+
+.dark-slider .rc-slider-handle:hover {
+    border-color: #FFCC55 !important;
+}
+
+.dark-slider .rc-slider-handle:active {
+    border-color: #FFCC55 !important;
+    box-shadow: 0 0 0 5px rgba(255,177,0,0.2) !important;
+}
+
+.dark-slider .rc-slider-dot {
+    display: none !important;
+}
+
+/* Light theme slider */
+.light-slider .rc-slider-mark-text {
+    color: #1a1a2e !important;
+    font-size: 11px !important;
+    font-family: 'IBM Plex Mono', monospace !important;
+}
+
+.light-slider .rc-slider-mark-text-active {
+    color: #ff6b35 !important;
+}
+
+.light-slider .rc-slider-track {
+    background-color: #ff6b35 !important;
+    height: 3px !important;
+}
+
+.light-slider .rc-slider-rail {
+    background-color: #e0e0e0 !important;
+    height: 3px !important;
+}
+
+.light-slider .rc-slider-handle {
+    border: 2px solid #ff6b35 !important;
+    background-color: #ffffff !important;
+    width: 14px !important;
+    height: 14px !important;
+    margin-top: -6px !important;
+    opacity: 1 !important;
+}
+
+.light-slider .rc-slider-handle:hover {
+    border-color: #ff8a5c !important;
+}
+
+.light-slider .rc-slider-handle:active {
+    border-color: #ff8a5c !important;
+    box-shadow: 0 0 0 5px rgba(255,107,53,0.2) !important;
+}
+
+.light-slider .rc-slider-dot {
+    display: none !important;
+}
+
+/* ================================================================ */
+/* ===== QUALIFYING VS RACE PAGE - RADIO BUTTON FIXES ===== */
+/* ================================================================ */
+
+/* Make radio button text visible */
+.toggle-group {
+    color: #FFFFFF !important;
+}
+
+.toggle-group label {
+    color: #FFFFFF !important;
+    cursor: pointer;
+    font-size: 13px !important;
+    font-family: 'IBM Plex Mono', monospace !important;
+}
+
+.toggle-group input[type="radio"] {
+    accent-color: #FFB100 !important;
+    margin-right: 6px !important;
+    cursor: pointer !important;
+}
+
+.toggle-group input[type="radio"]:checked + label {
+    color: #FFB100 !important;
+}
+
+/* Light theme radio buttons */
+.light-theme .toggle-group label {
+    color: #1a1a2e !important;
+}
+
+.light-theme .toggle-group input[type="radio"]:checked + label {
+    color: #ff6b35 !important;
+}
+
+/* ================================================================ */
+/* ===== QUALIFYING VS RACE PAGE - STAT READOUT FIXES ===== */
+/* ================================================================ */
+
+/* Ensure stat readouts are visible */
+.stat-readout {
+    padding: 14px 20px;
+    border-left: 2px solid #FFB100;
+    background-color: #1B1E26;
+    flex: 1;
+}
+
+.stat-readout-label {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: #C7CCD6;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    font-family: 'IBM Plex Mono', monospace;
+}
+
+.stat-readout-value {
+    font-size: 26px;
+    color: #FFB100;
+    font-weight: 500;
+    line-height: 1;
+    font-family: 'IBM Plex Mono', monospace;
+}
+
+/* Light theme stat readouts */
+.light-theme .stat-readout {
+    background-color: #f8f9fa;
+    border-left-color: #ff6b35;
+}
+
+.light-theme .stat-readout-label {
+    color: #666666;
+}
+
+.light-theme .stat-readout-value {
+    color: #ff6b35;
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
     .charts-grid {
@@ -349,4 +675,51 @@
     .page-title-text, .page-breadcrumb {
         display: none;
     }
+}
+
+/* ================================================================ */
+/* ===== ADDITIONAL FIXES FOR DROPDOWN VISIBILITY ===== */
+/* ================================================================ */
+
+/* Fix for VirtualizedSelect (used in some dropdowns) */
+.VirtualizedSelectOption {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+}
+
+.VirtualizedSelectFocusedOption {
+    background-color: #f0f0f0 !important;
+    color: #000000 !important;
+}
+
+.VirtualizedSelectDisabledOption {
+    color: #999999 !important;
+}
+
+/* Fix for Select multi-value input */
+.Select--multi .Select-input {
+    color: #000000 !important;
+}
+
+.Select--multi .Select-input input {
+    color: #000000 !important;
+}
+
+/* Fix dropdown in dark mode */
+.Select-control .Select-value-label {
+    color: #000000 !important;
+}
+
+/* Ensure dropdown text is never white */
+.Select--single .Select-value .Select-value-label {
+    color: #000000 !important;
+}
+
+/* Fix for any white text in dropdowns */
+[class*="Select"] [class*="label"] {
+    color: #000000 !important;
+}
+
+[class*="Select"] [class*="value"] {
+    color: #000000 !important;
 }
