@@ -174,7 +174,7 @@ def create_overview_page(theme='dark', color_scheme='Viridis'):
             x='year',
             y='Races',
             color='Races',
-            color_continuous_scale='Viridis',
+            color_continuous_scale=color_scheme,
             text='Races'
         )
         fig1.update_traces(textposition='outside', hovertemplate='<b>%{x}</b><br>Unique Races: %{y}<extra></extra>')
@@ -204,7 +204,7 @@ def create_overview_page(theme='dark', color_scheme='Viridis'):
             y='country',
             orientation='h',
             color='Circuits',
-            color_continuous_scale='Viridis',
+            color_continuous_scale=color_scheme,
             text='Circuits'
         )
         fig2.update_traces(
@@ -367,6 +367,7 @@ def create_overview_page(theme='dark', color_scheme='Viridis'):
                     options=[{'label': 'All Years', 'value': 'All'}] + [{'label': str(y), 'value': y} for y in available_years],
                     value='All',
                     clearable=False,
+                    className='dark-dropdown',
                     style={'width': '180px', 'backgroundColor': '#ffffff', 'color': '#000000', 'border': '1px solid #cccccc', 'borderRadius': '4px'}
                 )
             ], style={'display': 'flex', 'alignItems': 'center', 'marginRight': '20px'}),
@@ -377,6 +378,7 @@ def create_overview_page(theme='dark', color_scheme='Viridis'):
                     options=[{'label': 'All Constructors', 'value': 'All'}] + [{'label': c, 'value': c} for c in available_constructors],
                     value='All',
                     clearable=False,
+                    className='dark-dropdown',
                     style={'width': '200px', 'backgroundColor': '#ffffff', 'color': '#000000', 'border': '1px solid #cccccc', 'borderRadius': '4px'}
                 )
             ], style={'display': 'flex', 'alignItems': 'center'})
@@ -475,33 +477,43 @@ def create_overview_page(theme='dark', color_scheme='Viridis'):
 # ============================================================
 # SLOT 3: CHAMPIONSHIP PAGE
 # ============================================================
-def create_championship_page(theme='dark', selected_year=None, selected_team=None):
-    """Create the championship evolution page"""
-    df = load_data()
+def build_championship_content(df, selected_year, theme='dark', color_scheme='Viridis'):
+    """Generates all graphs, stats, and tables based on selected year filter"""
     
     # Theme colors
     if theme == 'dark':
         text_color, bg_color, card_bg, border_color, chart_bg = '#ffffff', '#0d0d1a', 'rgba(26, 26, 46, 0.85)', 'rgba(255, 255, 255, 0.08)', 'rgba(0,0,0,0)'
     else:
         text_color, bg_color, card_bg, border_color, chart_bg = '#1a1a2e', '#f8f9fa', '#ffffff', '#e0e0e0', 'rgba(0,0,0,0)'
-    
-    available_years = sorted(df['year'].unique()) if 'year' in df.columns else [2024]
-    if selected_year is None:
-        selected_year = available_years[-1] if available_years else 2024
-    
-    year_df = df[df['year'] == selected_year] if 'year' in df.columns else df
-    if selected_team and selected_team != 'All' and 'constructor_name' in year_df.columns:
-        filtered_df = year_df[year_df['constructor_name'] == selected_team]
+
+    # Ensure 'year' column exists and is numeric
+    if 'year' not in df.columns:
+        filtered_df = df.copy()
     else:
-        filtered_df = year_df
+        df['year'] = pd.to_numeric(df['year'], errors='coerce')
+        if selected_year is not None:
+            filtered_df = df[df['year'] == selected_year].copy()
+        else:
+            filtered_df = df.copy()
+        
     if filtered_df.empty:
-        filtered_df = year_df
-    
+        filtered_df = df.copy()
+        logger.warning(f"No data found for year {selected_year}, showing all data")
+
+    all_drivers_df = pd.DataFrame()
+
     # FIGURE 1: Championship Standings
     if 'championship_points' in filtered_df.columns and 'driver_name' in filtered_df.columns:
         temp_df = filtered_df.sort_values('round')
         all_drivers_df = temp_df.groupby('driver_name').last().reset_index()
-        all_drivers_df = all_drivers_df[['driver_name', 'championship_points', 'constructor_name', 'nationality']]
+        
+        cols = ['driver_name', 'championship_points']
+        if 'constructor_name' in all_drivers_df.columns:
+            cols.append('constructor_name')
+        if 'nationality' in all_drivers_df.columns:
+            cols.append('nationality')
+        
+        all_drivers_df = all_drivers_df[cols]
         all_drivers_df = all_drivers_df.sort_values('championship_points', ascending=False)
         all_drivers_df['rank'] = range(1, len(all_drivers_df) + 1)
         top_10_df = all_drivers_df.head(10)
@@ -511,30 +523,38 @@ def create_championship_page(theme='dark', selected_year=None, selected_team=Non
             x='driver_name',
             y='championship_points',
             color='championship_points',
-            color_continuous_scale='Viridis',
+            color_continuous_scale=color_scheme,
             text='championship_points'
         )
+        
+        customdata_cols = ['rank']
+        if 'nationality' in top_10_df.columns:
+            customdata_cols.append('nationality')
+        else:
+            top_10_df['nationality'] = 'Unknown'
+            customdata_cols.append('nationality')
+        if 'constructor_name' in top_10_df.columns:
+            customdata_cols.append('constructor_name')
+        else:
+            top_10_df['constructor_name'] = 'Unknown'
+            customdata_cols.append('constructor_name')
+        
         fig1.update_traces(
             textposition='outside',
             hovertemplate='<b>%{x}</b><br>🏆 Rank: #%{customdata[0]}<br>🏆 Points: %{y:,.0f}<br>🌍 Country: %{customdata[1]}<br>🏎️ Team: %{customdata[2]}<extra></extra>',
-            customdata=top_10_df[['rank', 'nationality', 'constructor_name']].values
+            customdata=top_10_df[customdata_cols].values
         )
         fig1.update_layout(
-            xaxis_title="Driver",
-            yaxis_title="Points",
-            showlegend=False,
-            plot_bgcolor=chart_bg,
-            paper_bgcolor=chart_bg,
-            font_color=text_color,
-            hoverlabel=dict(bgcolor=card_bg, font_color=text_color),
-            height=450,
-            title=f'🏆 {selected_year} Championship Standings - Top 10 Drivers'
+            xaxis_title="Driver", yaxis_title="Points", showlegend=False,
+            plot_bgcolor=chart_bg, paper_bgcolor=chart_bg, font_color=text_color,
+            hoverlabel=dict(bgcolor=card_bg, font_color=text_color), height=450,
+            title=f'🏆 {selected_year} Championship Standings - Top 10 Drivers' if selected_year else '🏆 Championship Standings - Top 10 Drivers'
         )
     else:
         fig1 = go.Figure()
         fig1.add_annotation(text="No championship data available", showarrow=False)
-        all_drivers_df = pd.DataFrame()
-    
+        fig1.update_layout(plot_bgcolor=chart_bg, paper_bgcolor=chart_bg, font_color=text_color)
+
     # FIGURE 2: Championship Progress
     if 'championship_points' in filtered_df.columns and 'round' in filtered_df.columns and 'driver_name' in filtered_df.columns:
         driver_points_total = filtered_df.groupby('driver_name')['championship_points'].max().reset_index()
@@ -546,66 +566,56 @@ def create_championship_page(theme='dark', selected_year=None, selected_team=Non
         colors = px.colors.qualitative.Set1
         for i, driver in enumerate(top5_drivers):
             driver_data = top5_data[top5_data['driver_name'] == driver].sort_values('round')
-            fig2.add_trace(go.Scatter(
-                x=driver_data['round'],
-                y=driver_data['championship_points'],
-                mode='lines+markers',
-                name=driver,
-                line=dict(color=colors[i % len(colors)], width=3),
-                marker=dict(size=8),
-                hovertemplate='<b>%{text}</b><br>Round %{x}<br>Points: %{y:,.0f}<extra></extra>',
-                text=[driver] * len(driver_data)
-            ))
+            if not driver_data.empty:
+                fig2.add_trace(go.Scatter(
+                    x=driver_data['round'], y=driver_data['championship_points'],
+                    mode='lines+markers', name=driver,
+                    line=dict(color=colors[i % len(colors)], width=3), marker=dict(size=8),
+                    hovertemplate='<b>%{text}</b><br>Round %{x}<br>Points: %{y:,.0f}<extra></extra>',
+                    text=[driver] * len(driver_data)
+                ))
         fig2.update_layout(
-            title=f'📈 {selected_year} Championship Progress (Top 5 Drivers)',
-            xaxis_title="Race Number",
-            yaxis_title="Cumulative Points",
-            plot_bgcolor=chart_bg,
-            paper_bgcolor=chart_bg,
-            font_color=text_color,
-            hovermode='x unified',
-            legend=dict(bgcolor=card_bg if theme == 'dark' else 'rgba(255,255,255,0.8)', font_color=text_color),
-            xaxis=dict(tickmode='linear', tick0=1, dtick=1),
-            height=400
+            title=f'📈 {selected_year} Championship Progress (Top 5 Drivers)' if selected_year else '📈 Championship Progress (Top 5 Drivers)',
+            xaxis_title="Race Number", yaxis_title="Cumulative Points",
+            plot_bgcolor=chart_bg, paper_bgcolor=chart_bg, font_color=text_color,
+            hovermode='x unified', legend=dict(bgcolor=card_bg if theme == 'dark' else 'rgba(255,255,255,0.8)', font_color=text_color),
+            xaxis=dict(tickmode='linear', tick0=1, dtick=1), height=400
         )
     else:
         fig2 = go.Figure()
         fig2.add_annotation(text="No championship progress data available", showarrow=False)
-    
+        fig2.update_layout(plot_bgcolor=chart_bg, paper_bgcolor=chart_bg, font_color=text_color)
+
     # FIGURE 3: Year-by-Year Champions
     if 'year' in df.columns and 'championship_points' in df.columns and 'driver_name' in df.columns:
         driver_yearly_points = df.groupby(['year', 'driver_name'])['championship_points'].max().reset_index()
         yearly_champions = driver_yearly_points.loc[driver_yearly_points.groupby('year')['championship_points'].idxmax()]
         yearly_champions = yearly_champions.sort_values('year')
         
+        colors = ['#ff6b35' if y == selected_year else '#4a4a6a' for y in yearly_champions['year']]
+        
         fig3 = px.bar(
-            yearly_champions,
-            x='year',
-            y='championship_points',
-            color='driver_name',
-            text='championship_points',
-            color_discrete_sequence=px.colors.qualitative.Set1
+            yearly_champions, x='year', y='championship_points',
+            color='year', text='championship_points',
+            color_continuous_scale=color_scheme if selected_year is None else None,
+            color_discrete_sequence=px.colors.qualitative.Set1 if selected_year is not None else None
         )
         fig3.update_traces(
             textposition='outside',
             hovertemplate='<b>%{x}</b><br>🏆 Champion: %{customdata[0]}<br>Points: %{y:,.0f}<extra></extra>',
-            customdata=yearly_champions[['driver_name']].values
+            customdata=yearly_champions[['driver_name']].values,
+            marker_color=colors
         )
         fig3.update_layout(
-            xaxis_title="Year",
-            yaxis_title="Champion's Points",
-            plot_bgcolor=chart_bg,
-            paper_bgcolor=chart_bg,
-            font_color=text_color,
-            showlegend=True,
-            legend=dict(bgcolor=card_bg if theme == 'dark' else 'rgba(255,255,255,0.8)', font_color=text_color),
-            title='🏆 Year-by-Year Champions (Winner\'s Points Only)',
-            height=400
+            xaxis_title="Year", yaxis_title="Champion's Points",
+            plot_bgcolor=chart_bg, paper_bgcolor=chart_bg, font_color=text_color, showlegend=False,
+            title='🏆 Year-by-Year Champions (Winner\'s Points Only)', height=400
         )
     else:
         fig3 = go.Figure()
         fig3.add_annotation(text="No year-by-year champion data available", showarrow=False)
-    
+        fig3.update_layout(plot_bgcolor=chart_bg, paper_bgcolor=chart_bg, font_color=text_color)
+
     # STATS
     total_drivers = len(filtered_df['driver_name'].unique()) if 'driver_name' in filtered_df.columns else 0
     
@@ -618,68 +628,27 @@ def create_championship_page(theme='dark', selected_year=None, selected_team=Non
         total_season_points = all_drivers_df['championship_points'].sum()
         gap_to_second = top_points - (all_drivers_df.iloc[1]['championship_points'] if len(all_drivers_df) > 1 else 0)
     else:
-        max_points, avg_points, active_drivers, top_points, total_season_points, gap_to_second = 0, 0, 0, 0, 0, 0
+        max_points = 0
+        avg_points = 0
+        active_drivers = 0
+        top_points = 0
+        total_season_points = 0
+        gap_to_second = 0
         top_driver = 'N/A'
-    
-    return html.Div([
+
+    return [
         html.Div([
-            html.H2([html.Span("🏆 "), "Championship Evolution"]),
-            html.P("Track the championship battle throughout the season", className="text-muted mb-0"),
-        ], id="app-header", style={
-            "background": f"linear-gradient(120deg, {SURFACE_RAISED} 0%, {SURFACE} 70%)",
-            "borderBottom": f"3px solid {ACCENT_RED}",
-            "borderRadius": "14px",
-            "padding": "22px 28px",
-            "marginTop": "18px",
-            "marginBottom": "18px",
-            "boxShadow": "0 8px 24px rgba(0,0,0,0.35)"
-        }),
-        
-        html.Div([
-            html.Div([
-                html.Label("📅 Select Year:", style={'color': text_color, 'fontWeight': 'bold', 'marginRight': '10px'}),
-                dcc.Dropdown(
-                    id='year-selector',
-                    options=[{'label': str(year), 'value': year} for year in available_years],
-                    value=selected_year,
-                    clearable=False,
-                    style={'width': '200px', 'backgroundColor': '#ffffff', 'color': '#000000', 'border': '1px solid #cccccc', 'borderRadius': '4px'}
-                )
-            ], style={'display': 'flex', 'alignItems': 'center', 'gap': '10px', 'flex': '1'}),
-            html.Div([
-                html.Label("🔍 Filter by Team:", style={'color': text_color, 'fontWeight': 'bold', 'marginRight': '10px'}),
-                dcc.Dropdown(
-                    id='championship-team-filter',
-                    options=[{'label': 'All Teams', 'value': 'All'}] + [{'label': team, 'value': team} for team in df['constructor_name'].unique()],
-                    value=selected_team or 'All',
-                    clearable=False,
-                    style={'width': '200px', 'backgroundColor': '#ffffff', 'color': '#000000', 'border': '1px solid #cccccc', 'borderRadius': '4px'}
-                )
-            ], style={'display': 'flex', 'alignItems': 'center', 'gap': '10px', 'flex': '1'})
-        ], style={'display': 'flex', 'gap': '30px', 'marginBottom': '20px', 'flexWrap': 'wrap'}),
-        
-        html.Div([
-            html.Div([html.H3(f"{total_drivers}", className="stat-number", style={'color': '#ff6b35'}), html.P("🏁 Total Drivers", className="stat-label", style={'color': text_color})],
-                    className="stat-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}'}),
-            html.Div([html.H3(f"{max_points:,.0f}", className="stat-number", style={'color': '#4ecdc4'}), html.P("⭐ Max Points", className="stat-label", style={'color': text_color})],
-                    className="stat-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}'}),
-            html.Div([html.H3(f"{avg_points:.1f}", className="stat-number", style={'color': '#ffe66d'}), html.P("📊 Average Points", className="stat-label", style={'color': text_color})],
-                    className="stat-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}'}),
-            html.Div([html.H3(f"{active_drivers}", className="stat-number", style={'color': '#ff6b6b'}), html.P("✅ Active Drivers", className="stat-label", style={'color': text_color})],
-                    className="stat-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}'}),
-            html.Div([html.H3(f"{top_driver}", className="stat-number", style={'color': '#ffd93d', 'fontSize': '20px'}), html.P(f"🏆 Leader with {top_points:,.0f} pts", className="stat-label", style={'color': text_color})],
-                    className="stat-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}'})
+            html.Div([html.H3(f"{total_drivers}", className="stat-number", style={'color': '#ff6b35'}), html.P("🏁 Total Drivers", className="stat-label", style={'color': text_color})], className="stat-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}'}),
+            html.Div([html.H3(f"{max_points:,.0f}", className="stat-number", style={'color': '#4ecdc4'}), html.P("⭐ Max Points", className="stat-label", style={'color': text_color})], className="stat-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}'}),
+            html.Div([html.H3(f"{avg_points:.1f}", className="stat-number", style={'color': '#ffe66d'}), html.P("📊 Average Points", className="stat-label", style={'color': text_color})], className="stat-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}'}),
+            html.Div([html.H3(f"{active_drivers}", className="stat-number", style={'color': '#ff6b6b'}), html.P("✅ Active Drivers", className="stat-label", style={'color': text_color})], className="stat-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}'}),
+            html.Div([html.H3(f"{top_driver}", className="stat-number", style={'color': '#ffd93d', 'fontSize': '20px'}), html.P(f"🏆 Leader with {top_points:,.0f} pts", className="stat-label", style={'color': text_color})], className="stat-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}'})
         ], className="stats-grid"),
         
         html.Div([
-            html.Div([dcc.Graph(figure=fig1, config={'displayModeBar': True})], 
-                     className="chart-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'grid-column': 'span 2'}),
-            html.Div([
-                dcc.Graph(figure=fig2, config={'displayModeBar': True})
-            ], className="chart-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}'}),
-            html.Div([
-                dcc.Graph(figure=fig3, config={'displayModeBar': True})
-            ], className="chart-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}'})
+            html.Div([dcc.Graph(figure=fig1, config={'displayModeBar': True})], className="chart-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'gridColumn': 'span 2'}),
+            html.Div([dcc.Graph(figure=fig2, config={'displayModeBar': True})], className="chart-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}'}),
+            html.Div([dcc.Graph(figure=fig3, config={'displayModeBar': True})], className="chart-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}'})
         ], className="charts-grid", style={'display': 'grid', 'gridTemplateColumns': '1fr 1fr', 'gap': '20px', 'marginBottom': '20px'}),
         
         html.Div([
@@ -688,56 +657,36 @@ def create_championship_page(theme='dark', selected_year=None, selected_team=Non
                 dash_table.DataTable(
                     id='top-drivers-table',
                     columns=[
-                        {"name": "Rank", "id": "rank"},
+                        {"name": "Rank", "id": "rank"}, 
                         {"name": "Driver", "id": "driver_name"},
                         {"name": "Cumulative Points", "id": "championship_points"},
-                        {"name": "Constructor", "id": "constructor_name"},
-                        {"name": "Nationality", "id": "nationality"}
+                        {"name": "Constructor", "id": "constructor_name"} if 'constructor_name' in all_drivers_df.columns else {"name": "Constructor", "id": "constructor_name"},
+                        {"name": "Nationality", "id": "nationality"} if 'nationality' in all_drivers_df.columns else {"name": "Nationality", "id": "nationality"}
                     ],
-                    data=all_drivers_df.to_dict('records') if 'all_drivers_df' in locals() and not all_drivers_df.empty else [],
-                    page_size=15,
+                    data=all_drivers_df.to_dict('records') if not all_drivers_df.empty else [],
+                    page_size=15, 
                     style_table={'overflowX': 'auto'},
                     style_cell={
                         'textAlign': 'left', 
                         'padding': '10px', 
                         'backgroundColor': card_bg, 
-                        'color': text_color,
-                        'border': f'1px solid {border_color}',
+                        'color': text_color, 
+                        'border': f'1px solid {border_color}', 
                         'fontSize': '14px'
                     },
                     style_header={
-                        'backgroundColor': '#2a2a4e',
-                        'color': '#ffffff',
-                        'fontWeight': 'bold',
-                        'padding': '10px',
+                        'backgroundColor': '#2a2a4e', 
+                        'color': '#ffffff', 
+                        'fontWeight': 'bold', 
+                        'padding': '10px', 
                         'border': f'1px solid {border_color}'
                     },
                     style_data_conditional=[
-                        {
-                            'if': {'row_index': 'odd'},
-                            'backgroundColor': '#22223a' if theme == 'dark' else '#f8f9fa',
-                            'color': text_color
-                        },
-                        {
-                            'if': {'column_id': 'championship_points'},
-                            'color': '#ff6b35',
-                            'fontWeight': 'bold'
-                        },
-                        {
-                            'if': {'column_id': 'rank', 'filter_query': '{rank} = 1'},
-                            'color': '#ffd93d',
-                            'fontWeight': 'bold'
-                        },
-                        {
-                            'if': {'column_id': 'rank', 'filter_query': '{rank} = 2'},
-                            'color': '#c0c0c0',
-                            'fontWeight': 'bold'
-                        },
-                        {
-                            'if': {'column_id': 'rank', 'filter_query': '{rank} = 3'},
-                            'color': '#cd7f32',
-                            'fontWeight': 'bold'
-                        }
+                        {'if': {'row_index': 'odd'}, 'backgroundColor': '#22223a' if theme == 'dark' else '#f8f9fa', 'color': text_color},
+                        {'if': {'column_id': 'championship_points'}, 'color': '#ff6b35', 'fontWeight': 'bold'},
+                        {'if': {'column_id': 'rank', 'filter_query': '{rank} = 1'}, 'color': '#ffd93d', 'fontWeight': 'bold'},
+                        {'if': {'column_id': 'rank', 'filter_query': '{rank} = 2'}, 'color': '#c0c0c0', 'fontWeight': 'bold'},
+                        {'if': {'column_id': 'rank', 'filter_query': '{rank} = 3'}, 'color': '#cd7f32', 'fontWeight': 'bold'}
                     ],
                     sort_action='native'
                 )
@@ -748,29 +697,94 @@ def create_championship_page(theme='dark', selected_year=None, selected_team=Non
             html.H3("💡 Key Insights", className="insights-title", style={'color': text_color}),
             html.Div([
                 html.Div([
-                    html.Span("🏆 ", style={'fontSize': '20px'}),
-                    html.Span(f"{selected_year} Champion: ", style={'fontWeight': 'bold', 'color': text_color}),
-                    html.Span(f"{top_driver}", style={'color': '#ffd93d', 'fontWeight': 'bold'}),
+                    html.Span("🏆 ", style={'fontSize': '20px'}), 
+                    html.Span(f"{selected_year} Champion: " if selected_year else "Champion: ", style={'fontWeight': 'bold', 'color': text_color}), 
+                    html.Span(f"{top_driver}", style={'color': '#ffd93d', 'fontWeight': 'bold'}), 
                     html.Span(f" ({top_points:,.0f} points)", style={'color': text_color})
                 ], className="insight-item", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}'}),
                 html.Div([
-                    html.Span("📊 ", style={'fontSize': '20px'}),
-                    html.Span("Total Points in Season: ", style={'fontWeight': 'bold', 'color': text_color}),
+                    html.Span("📊 ", style={'fontSize': '20px'}), 
+                    html.Span("Total Points in Season: ", style={'fontWeight': 'bold', 'color': text_color}), 
                     html.Span(f"{total_season_points:,.0f}", style={'color': text_color})
                 ], className="insight-item", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}'}),
                 html.Div([
-                    html.Span("👥 ", style={'fontSize': '20px'}),
-                    html.Span("Active Drivers: ", style={'fontWeight': 'bold', 'color': text_color}),
+                    html.Span("👥 ", style={'fontSize': '20px'}), 
+                    html.Span("Active Drivers: ", style={'fontWeight': 'bold', 'color': text_color}), 
                     html.Span(f"{active_drivers} out of {total_drivers}", style={'color': text_color})
                 ], className="insight-item", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}'}),
                 html.Div([
-                    html.Span("📈 ", style={'fontSize': '20px'}),
-                    html.Span("Points Gap to 2nd: ", style={'fontWeight': 'bold', 'color': text_color}),
+                    html.Span("📈 ", style={'fontSize': '20px'}), 
+                    html.Span("Points Gap to 2nd: ", style={'fontWeight': 'bold', 'color': text_color}), 
                     html.Span(f"{gap_to_second:,.0f} pts", style={'color': text_color})
                 ], className="insight-item", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}'})
             ], className="insights-grid")
         ], className="insights-container", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}'})
+    ]
+
+
+def create_championship_page(theme='dark', color_scheme='Viridis'):
+    """Create the championship evolution page"""
+    df = load_data()
+    
+    if theme == 'dark':
+        text_color = '#ffffff'
+        SURFACE, SURFACE_RAISED, ACCENT_RED = '#15181D', '#1D2129', '#E10600'
+    else:
+        text_color = '#1a1a2e'
+        SURFACE, SURFACE_RAISED, ACCENT_RED = '#f8f9fa', '#ffffff', '#E10600'
+    
+    if 'year' in df.columns:
+        df['year'] = pd.to_numeric(df['year'], errors='coerce')
+        available_years = sorted(df['year'].dropna().unique())
+    else:
+        available_years = [2024]
+    
+    selected_year = available_years[-1] if available_years else 2024
+        
+    return html.Div([
+        html.Div([
+            html.H2([html.Span("🏆 "), "Championship Evolution"]),
+            html.P("Track the championship battle throughout the season", className="text-muted mb-0"),
+        ], id="app-header", style={
+            "background": f"linear-gradient(120deg, {SURFACE_RAISED} 0%, {SURFACE} 70%)",
+            "borderBottom": f"3px solid {ACCENT_RED}", 
+            "borderRadius": "14px",
+            "padding": "22px 28px", 
+            "marginTop": "18px", 
+            "marginBottom": "18px", 
+            "boxShadow": "0 8px 24px rgba(0,0,0,0.35)"
+        }),
+        
+        html.Div([
+            html.Div([
+                html.Label("📅 Select Year:", style={'color': text_color, 'fontWeight': 'bold', 'marginRight': '10px'}),
+                dcc.Dropdown(
+                    id='champ-year-selector',
+                    options=[{'label': str(int(year)), 'value': int(year)} for year in available_years],
+                    value=selected_year, 
+                    clearable=False,
+                    className='dark-dropdown',
+                    style={'width': '250px', 'backgroundColor': '#ffffff', 'color': '#000000', 'border': '1px solid #cccccc', 'borderRadius': '4px'}
+                )
+            ], style={'display': 'flex', 'alignItems': 'center', 'gap': '10px'})
+        ], style={'display': 'flex', 'marginBottom': '20px'}),
+        
+        html.Div(
+            id='championship-dynamic-content',
+            children=build_championship_content(df, selected_year, theme, color_scheme)
+        )
     ])
+
+
+def register_championship_callbacks(app):
+    @app.callback(
+        Output('championship-dynamic-content', 'children'),
+        [Input('champ-year-selector', 'value')],
+        [State('theme-store', 'data'), State('color-scheme-store', 'data')]
+    )
+    def update_dashboard_content(selected_year, theme, color_scheme):
+        df = load_data()
+        return build_championship_content(df, selected_year, theme or 'dark', color_scheme or 'Viridis')
 
 
 # ============================================================
@@ -784,95 +798,191 @@ class DriverDataEngine:
     def _sanitize_data(self):
         required_cols = ['year', 'round', 'grid', 'positionOrder', 'points', 'positions_gained', 'driver_name', 'status']
         for col in ['year', 'round', 'grid', 'positionOrder', 'positions_gained']:
-            self.df[col] = pd.to_numeric(self.df[col], errors='coerce')
-        self.df['points'] = pd.to_numeric(self.df['points'], errors='coerce').fillna(0.0)
-        self.df = self.df.dropna(subset=['year', 'round', 'grid', 'positionOrder', 'positions_gained'])
+            if col in self.df.columns:
+                self.df[col] = pd.to_numeric(self.df[col], errors='coerce')
+        if 'points' in self.df.columns:
+            self.df['points'] = pd.to_numeric(self.df['points'], errors='coerce').fillna(0.0)
+        
+        essential_cols = ['year', 'round', 'grid', 'positionOrder', 'positions_gained']
+        existing_cols = [col for col in essential_cols if col in self.df.columns]
+        if existing_cols:
+            self.df = self.df.dropna(subset=existing_cols)
+        
         for col in ['year', 'round', 'grid', 'positionOrder', 'positions_gained']:
-            self.df[col] = self.df[col].astype(int)
+            if col in self.df.columns:
+                self.df[col] = self.df[col].astype(int)
+        
         if 'status' not in self.df.columns:
             self.df['status'] = "Unknown"
         else:
             self.df['status'] = self.df['status'].fillna("Unknown").astype(str)
+        
         if 'lap_consistency_score' not in self.df.columns:
-            self.df['lap_consistency_score'] = 1 / (self.df.get('lap_std', pd.Series(0)).fillna(0) + 1)
-        self.df['is_dnf'] = pd.to_numeric(self.df.get('is_dnf', pd.Series(0)), errors='coerce').fillna(0).astype(int)
+            if 'lap_std' in self.df.columns:
+                self.df['lap_consistency_score'] = 1 / (self.df['lap_std'].fillna(0) + 1)
+            else:
+                self.df['lap_consistency_score'] = 1.0
+        
+        if 'is_dnf' in self.df.columns:
+            self.df['is_dnf'] = pd.to_numeric(self.df['is_dnf'], errors='coerce').fillna(0).astype(int)
+        else:
+            self.df['is_dnf'] = 0
 
     def get_unique_drivers(self):
-        return sorted(self.df['driver_name'].dropna().unique())
+        if 'driver_name' in self.df.columns:
+            return sorted(self.df['driver_name'].dropna().unique())
+        return []
 
     def get_season_range_label(self):
-        years = self.df['year'].unique()
-        return f"{int(years.min())}-{int(years.max())}" if len(years) > 0 else "All Seasons"
+        if 'year' in self.df.columns:
+            years = self.df['year'].unique()
+            return f"{int(years.min())}-{int(years.max())}" if len(years) > 0 else "All Seasons"
+        return "All Seasons"
 
     def get_available_seasons(self, driver_name=None):
-        seasons = self.df[self.df['driver_name'] == driver_name]['year'].unique() if driver_name else self.df['year'].unique()
-        return sorted(int(s) for s in seasons)
+        if 'year' not in self.df.columns:
+            return []
+        if driver_name and 'driver_name' in self.df.columns:
+            seasons = self.df[self.df['driver_name'] == driver_name]['year'].unique()
+        else:
+            seasons = self.df['year'].unique()
+        return sorted(int(s) for s in seasons if pd.notna(s))
 
     def get_historical_trends(self, driver_name, season_filter='all'):
-        if not driver_name:
+        if not driver_name or 'driver_name' not in self.df.columns:
             return pd.DataFrame(columns=['timeline_label', 'grid', 'positionOrder', 'status'])
+        
         driver_df = self.df[self.df['driver_name'] == driver_name].copy()
-        if str(season_filter).lower() != 'all':
-            driver_df = driver_df[driver_df['year'] == int(season_filter)].sort_values(by='round')
-            if not driver_df.empty:
-                driver_df['timeline_label'] = "Rd " + driver_df['round'].astype(str) + ": " + driver_df['race_name']
+        if driver_df.empty:
+            return pd.DataFrame(columns=['timeline_label', 'grid', 'positionOrder', 'status'])
+        
+        if str(season_filter).lower() != 'all' and 'year' in driver_df.columns:
+            try:
+                season_int = int(season_filter)
+                driver_df = driver_df[driver_df['year'] == season_int].sort_values(by='round')
+                if not driver_df.empty and 'round' in driver_df.columns and 'race_name' in driver_df.columns:
+                    driver_df['timeline_label'] = "Rd " + driver_df['round'].astype(str) + ": " + driver_df['race_name']
+            except (ValueError, TypeError):
+                driver_df = driver_df.sort_values(by=['year', 'round'])
+                if not driver_df.empty:
+                    driver_df['timeline_label'] = driver_df['year'].astype(str) + " R" + driver_df['round'].astype(str)
         else:
             driver_df = driver_df.sort_values(by=['year', 'round'])
             if not driver_df.empty:
                 driver_df['timeline_label'] = driver_df['year'].astype(str) + " R" + driver_df['round'].astype(str)
+        
         return driver_df
 
     def get_kpi_summary(self, driver_name, season_filter='all'):
         trends = self.get_historical_trends(driver_name, season_filter)
         if trends.empty:
             return {'pts': '0', 'avg_fin': '-', 'best_fin': '-', 'dnf_rate': '0%'}
+        
         return {
-            'pts': f"{trends['points'].sum():g}",
-            'avg_fin': f"{trends['positionOrder'].mean():.1f}",
-            'best_fin': f"P{int(trends['positionOrder'].min())}",
-            'dnf_rate': f"{(trends['is_dnf'].sum() / len(trends)) * 100:.1f}%"
+            'pts': f"{trends['points'].sum():g}" if 'points' in trends.columns else '0',
+            'avg_fin': f"{trends['positionOrder'].mean():.1f}" if 'positionOrder' in trends.columns else '-',
+            'best_fin': f"P{int(trends['positionOrder'].min())}" if 'positionOrder' in trends.columns else '-',
+            'dnf_rate': f"{(trends['is_dnf'].sum() / len(trends)) * 100:.1f}%" if 'is_dnf' in trends.columns else '0%'
         }
 
     def get_dnf_summary(self, driver_name, season_filter='all'):
         trends = self.get_historical_trends(driver_name, season_filter)
         total = len(trends)
-        return {'total': total, 'dnf_count': int(trends['is_dnf'].sum()), 'dnf_rate': (int(trends['is_dnf'].sum()) / total * 100) if total else 0.0}
+        if 'is_dnf' in trends.columns:
+            dnf_count = int(trends['is_dnf'].sum())
+            dnf_rate = (dnf_count / total * 100) if total > 0 else 0.0
+        else:
+            dnf_count = 0
+            dnf_rate = 0.0
+        return {'total': total, 'dnf_count': dnf_count, 'dnf_rate': dnf_rate}
 
     def get_classified_finishes(self, driver_name, season_filter='all'):
         trends = self.get_historical_trends(driver_name, season_filter)
-        return trends[trends['is_dnf'] == 0] if not trends.empty else trends
+        if trends.empty or 'is_dnf' not in trends.columns:
+            return trends
+        return trends[trends['is_dnf'] == 0]
 
     def generate_normalized_radar_metrics(self, selected_drivers, season_filter='all'):
         working_df = self.df.copy()
-        if str(season_filter).lower() != 'all':
-            working_df = working_df[working_df['year'] == int(season_filter)]
+        
+        if str(season_filter).lower() != 'all' and 'year' in working_df.columns:
+            try:
+                working_df = working_df[working_df['year'] == int(season_filter)]
+            except (ValueError, TypeError):
+                pass
+        
         if working_df.empty:
             return pd.DataFrame()
-        aggregated = working_df.groupby('driver_name').agg(
-            avg_grid=('grid', 'mean'), avg_finish=('positionOrder', 'mean'),
-            avg_gained=('positions_gained', 'mean'), avg_pts=('points', 'mean'),
-            consistency=('lap_consistency_score', 'mean')
-        ).reset_index()
+        
+        agg_dict = {}
+        if 'grid' in working_df.columns:
+            agg_dict['avg_grid'] = ('grid', 'mean')
+        if 'positionOrder' in working_df.columns:
+            agg_dict['avg_finish'] = ('positionOrder', 'mean')
+        if 'positions_gained' in working_df.columns:
+            agg_dict['avg_gained'] = ('positions_gained', 'mean')
+        if 'points' in working_df.columns:
+            agg_dict['avg_pts'] = ('points', 'mean')
+        if 'lap_consistency_score' in working_df.columns:
+            agg_dict['consistency'] = ('lap_consistency_score', 'mean')
+        
+        if not agg_dict:
+            return pd.DataFrame()
+        
+        aggregated = working_df.groupby('driver_name').agg(**agg_dict).reset_index()
         if aggregated.empty:
             return pd.DataFrame()
-        max_vals, min_vals = aggregated.max(numeric_only=True), aggregated.min(numeric_only=True)
-        def safe_scale(val, col, invert=False):
-            if max_vals[col] == min_vals[col]:
-                return 50.0
-            norm = (val - min_vals[col]) / (max_vals[col] - min_vals[col])
-            return (1.0 - norm) * 100 if invert else norm * 100
-        return pd.DataFrame([{
-            'driver_name': driver,
-            'Qualifying Pace': safe_scale(aggregated[aggregated['driver_name']==driver].iloc[0]['avg_grid'], 'avg_grid', True),
-            'Race Craft': safe_scale(aggregated[aggregated['driver_name']==driver].iloc[0]['avg_finish'], 'avg_finish', True),
-            'Overtaking Efficiency': safe_scale(aggregated[aggregated['driver_name']==driver].iloc[0]['avg_gained'], 'avg_gained'),
-            'Scoring Capacity': safe_scale(aggregated[aggregated['driver_name']==driver].iloc[0]['avg_pts'], 'avg_pts'),
-            'Lap Consistency': safe_scale(aggregated[aggregated['driver_name']==driver].iloc[0]['consistency'], 'consistency')
-        } for driver in selected_drivers if driver in aggregated['driver_name'].values])
+        
+        result = []
+        for driver in selected_drivers:
+            if driver not in aggregated['driver_name'].values:
+                continue
+            
+            row = aggregated[aggregated['driver_name'] == driver].iloc[0]
+            driver_metrics = {'driver_name': driver}
+            
+            if 'avg_grid' in aggregated.columns:
+                min_val, max_val = aggregated['avg_grid'].min(), aggregated['avg_grid'].max()
+                if max_val != min_val:
+                    driver_metrics['Qualifying Pace'] = (1 - (row['avg_grid'] - min_val) / (max_val - min_val)) * 100
+                else:
+                    driver_metrics['Qualifying Pace'] = 50.0
+            
+            if 'avg_finish' in aggregated.columns:
+                min_val, max_val = aggregated['avg_finish'].min(), aggregated['avg_finish'].max()
+                if max_val != min_val:
+                    driver_metrics['Race Craft'] = (1 - (row['avg_finish'] - min_val) / (max_val - min_val)) * 100
+                else:
+                    driver_metrics['Race Craft'] = 50.0
+            
+            if 'avg_gained' in aggregated.columns:
+                min_val, max_val = aggregated['avg_gained'].min(), aggregated['avg_gained'].max()
+                if max_val != min_val:
+                    driver_metrics['Overtaking Efficiency'] = ((row['avg_gained'] - min_val) / (max_val - min_val)) * 100
+                else:
+                    driver_metrics['Overtaking Efficiency'] = 50.0
+            
+            if 'avg_pts' in aggregated.columns:
+                min_val, max_val = aggregated['avg_pts'].min(), aggregated['avg_pts'].max()
+                if max_val != min_val:
+                    driver_metrics['Scoring Capacity'] = ((row['avg_pts'] - min_val) / (max_val - min_val)) * 100
+                else:
+                    driver_metrics['Scoring Capacity'] = 50.0
+            
+            if 'consistency' in aggregated.columns:
+                min_val, max_val = aggregated['consistency'].min(), aggregated['consistency'].max()
+                if max_val != min_val:
+                    driver_metrics['Lap Consistency'] = ((row['consistency'] - min_val) / (max_val - min_val)) * 100
+                else:
+                    driver_metrics['Lap Consistency'] = 50.0
+            
+            result.append(driver_metrics)
+        
+        return pd.DataFrame(result)
 
 
 def create_driver_performance_page(theme='dark'):
-    """Create the Driver Performance page"""
+    """Create the Driver Performance page."""
     df = load_data()
     engine = DriverDataEngine(df)
     
@@ -886,7 +996,6 @@ def create_driver_performance_page(theme='dark'):
     unique_drivers = engine.get_unique_drivers()
     season_range_label = engine.get_season_range_label()
     
-    # Sidebar Controls
     sidebar_controls = dbc.Card(
         dbc.CardBody([
             html.Div([html.I(className="fa fa-flag-checkered me-2"), "Race Control"], 
@@ -897,24 +1006,47 @@ def create_driver_performance_page(theme='dark'):
             html.H6([html.I(className="fa fa-user me-2", style={"color": ACCENT_CYAN}), "TARGET FOCUS DRIVER"], 
                    className="text-uppercase fw-bold mb-2", 
                    style={"fontSize": "0.75rem", "color": TEXT_PRIMARY}),
-            dcc.Dropdown(id='driver-1-select', 
-                        options=[{'label': n, 'value': n} for n in unique_drivers], 
-                        value='Lewis Hamilton' if 'Lewis Hamilton' in unique_drivers else (unique_drivers[0] if unique_drivers else None),
-                        clearable=False),
+            dcc.Dropdown(
+                id='driver-1-select', 
+                options=[{'label': n, 'value': n} for n in unique_drivers], 
+                value='Lewis Hamilton' if 'Lewis Hamilton' in unique_drivers else (unique_drivers[0] if unique_drivers else None),
+                clearable=False,
+                className='dark-dropdown',
+                style={
+                    'color': '#000000',
+                    'backgroundColor': '#ffffff'
+                }
+            ),
             html.Br(),
             
             html.H6([html.I(className="fa fa-user-plus me-2", style={"color": ACCENT_CYAN}), "COMPARE DRIVER (OPTIONAL)"], 
                    className="text-uppercase fw-bold mb-2", 
                    style={"fontSize": "0.75rem", "color": TEXT_PRIMARY}),
-            dcc.Dropdown(id='driver-2-select', 
-                        options=[{'label': '-- None --', 'value': ''}] + [{'label': n, 'value': n} for n in unique_drivers], 
-                        value=''),
+            dcc.Dropdown(
+                id='driver-2-select', 
+                options=[{'label': '-- None --', 'value': ''}] + [{'label': n, 'value': n} for n in unique_drivers], 
+                value='',
+                className='dark-dropdown',
+                style={
+                    'color': '#000000',
+                    'backgroundColor': '#ffffff'
+                }
+            ),
             html.Br(),
             
             html.H6([html.I(className="fa fa-calendar-alt me-2", style={"color": ACCENT_CYAN}), "ACTIVE SEASON CONSTRAINT"], 
                    className="text-uppercase fw-bold mb-2", 
                    style={"fontSize": "0.75rem", "color": TEXT_PRIMARY}),
-            dcc.Dropdown(id='season-select', value='all', clearable=False),
+            dcc.Dropdown(
+                id='season-select', 
+                value='all', 
+                clearable=False,
+                className='dark-dropdown',
+                style={
+                    'color': '#000000',
+                    'backgroundColor': '#ffffff'
+                }
+            ),
             html.Br(),
             
             html.H6([html.I(className="fa fa-chart-pie me-2", style={"color": ACCENT_CYAN}), "DISTRIBUTION VIEW TYPE"], 
@@ -929,9 +1061,12 @@ def create_driver_performance_page(theme='dark'):
                     labelCheckedClassName="active",
                     options=[{'label': 'Box Plot', 'value': 'box'}, {'label': 'Violin Plot', 'value': 'violin'}],
                     value='box',
+                    style={'color': text_color}
                 )
             )
-        ]), className="mb-3", style={
+        ]), 
+        className="mb-3", 
+        style={
             "background": f"linear-gradient(145deg, {SURFACE_RAISED}, {SURFACE})", 
             "border": f"1px solid {BORDER}", 
             "borderTop": f"4px solid {ACCENT_RED}", 
@@ -948,7 +1083,7 @@ def create_driver_performance_page(theme='dark'):
                 html.Div([html.I(className=f"fa {icon} me-2"), title], 
                         className="text-muted small text-uppercase fw-bold mb-1", 
                         style={'letterSpacing': '0.5px', 'color': ACCENT_CYAN}),
-                html.H3(id=id_val, className="mb-0 telemetry-value fw-bold")
+                html.H3(id=id_val, className="mb-0 telemetry-value fw-bold", style={'color': text_color})
             ]), width=6, lg=3
         )
     
@@ -956,7 +1091,7 @@ def create_driver_performance_page(theme='dark'):
         html.Div([
             html.H2([html.Span("🏎️ "), "Driver Performance Explorer"]),
             html.P("Interactive analysis of driver race execution, consistency, and comparative performance metrics.", 
-                   className="text-muted mb-0"),
+                   className="text-muted mb-0", style={'color': '#9AA0AA'}),
         ], id="app-header", style={
             "background": f"linear-gradient(120deg, {SURFACE_RAISED} 0%, {SURFACE} 70%)",
             "borderBottom": f"3px solid {ACCENT_RED}",
@@ -987,90 +1122,145 @@ def create_driver_performance_page(theme='dark'):
 
 
 # ============================================================
-# SLOT 5: CONSTRUCTOR EVOLUTION PAGE
+# SLOT 5: CONSTRUCTOR EVOLUTION PAGE - AGGREGATION FUNCTIONS
 # ============================================================
 def aggregate_constructor_season(data):
-    grouped = (
-        data.groupby(["year", "constructor_name"])
-        .agg(
-            season_points=("points", "sum"),
-            races=("raceId", "nunique"),
-            entries=("resultId", "count"),
-            wins=("is_winner", "sum"),
-            podiums=("is_podium", "sum"),
-            points_finishes=("is_points_finish", "sum"),
-            dnfs=("is_dnf", "sum"),
-            finishes=("is_dnf", lambda x: (x == 0).sum()),
-            avg_finish=("positionOrder", "mean"),
-            avg_grid=("grid", "mean"),
-            avg_positions_gained=("positions_gained", "mean"),
-        )
-        .reset_index()
-    )
-    grouped["dnf_rate_pct"] = (grouped["dnfs"] / (grouped["dnfs"] + grouped["finishes"]) * 100).round(1)
-    grouped["win_rate_pct"] = (grouped["wins"] / grouped["entries"] * 100).round(1)
-    grouped["podium_rate_pct"] = (grouped["podiums"] / grouped["entries"] * 100).round(1)
-    grouped["points_per_entry"] = (grouped["season_points"] / grouped["entries"]).round(2)
+    required_cols = ['year', 'constructor_name', 'points']
+    for col in required_cols:
+        if col not in data.columns:
+            logger.warning(f"Column '{col}' not found for constructor aggregation")
+            return pd.DataFrame()
+    
+    agg_dict = {
+        'season_points': ('points', 'sum'),
+        'entries': ('resultId', 'count') if 'resultId' in data.columns else ('constructor_name', 'count'),
+    }
+    
+    if 'raceId' in data.columns:
+        agg_dict['races'] = ('raceId', 'nunique')
+    if 'is_winner' in data.columns:
+        agg_dict['wins'] = ('is_winner', 'sum')
+    if 'is_podium' in data.columns:
+        agg_dict['podiums'] = ('is_podium', 'sum')
+    if 'is_points_finish' in data.columns:
+        agg_dict['points_finishes'] = ('is_points_finish', 'sum')
+    if 'is_dnf' in data.columns:
+        agg_dict['dnfs'] = ('is_dnf', 'sum')
+        agg_dict['finishes'] = ('is_dnf', lambda x: (x == 0).sum())
+    if 'positionOrder' in data.columns:
+        agg_dict['avg_finish'] = ('positionOrder', 'mean')
+    if 'grid' in data.columns:
+        agg_dict['avg_grid'] = ('grid', 'mean')
+    if 'positions_gained' in data.columns:
+        agg_dict['avg_positions_gained'] = ('positions_gained', 'mean')
+    
+    grouped = data.groupby(['year', 'constructor_name']).agg(**agg_dict).reset_index()
+    
+    if 'dnfs' in grouped.columns and 'finishes' in grouped.columns:
+        grouped['dnf_rate_pct'] = (grouped['dnfs'] / (grouped['dnfs'] + grouped['finishes']) * 100).round(1)
+    if 'wins' in grouped.columns and 'entries' in grouped.columns:
+        grouped['win_rate_pct'] = (grouped['wins'] / grouped['entries'] * 100).round(1)
+    if 'podiums' in grouped.columns and 'entries' in grouped.columns:
+        grouped['podium_rate_pct'] = (grouped['podiums'] / grouped['entries'] * 100).round(1)
+    if 'season_points' in grouped.columns and 'entries' in grouped.columns:
+        grouped['points_per_entry'] = (grouped['season_points'] / grouped['entries']).round(2)
+    
     return grouped
 
 
 def aggregate_points_share(data):
-    season_points = data.groupby(["year", "constructor_name"])["points"].sum().reset_index()
-    season_totals = season_points.groupby("year")["points"].transform("sum")
-    season_points["points_share_pct"] = (season_points["points"] / season_totals * 100).round(2)
-    season_points["season_rank"] = season_points.groupby("year")["points"].rank(method="min", ascending=False).astype(int)
+    if 'points' not in data.columns or 'constructor_name' not in data.columns or 'year' not in data.columns:
+        return pd.DataFrame()
+    
+    season_points = data.groupby(['year', 'constructor_name'])['points'].sum().reset_index()
+    season_totals = season_points.groupby('year')['points'].transform('sum')
+    season_points['points_share_pct'] = (season_points['points'] / season_totals * 100).round(2)
+    season_points['season_rank'] = season_points.groupby('year')['points'].rank(method='min', ascending=False).astype(int)
     return season_points
 
 
 def aggregate_constructor_career(data):
-    grouped = (
-        data.groupby("constructor_name")
-        .agg(
-            total_points=("points", "sum"),
-            seasons_active=("year", "nunique"),
-            total_entries=("resultId", "count"),
-            total_wins=("is_winner", "sum"),
-            total_podiums=("is_podium", "sum"),
-            total_dnfs=("is_dnf", "sum"),
-            avg_finish=("positionOrder", "mean"),
-            championship_titles=("championship_wins", "sum"),
-        )
-        .reset_index()
-        .sort_values("total_points", ascending=False)
-    )
-    grouped["win_rate_pct"] = (grouped["total_wins"] / grouped["total_entries"] * 100).round(1)
-    grouped["dnf_rate_pct"] = (grouped["total_dnfs"] / grouped["total_entries"] * 100).round(1)
-    grouped["points_per_season"] = (grouped["total_points"] / grouped["seasons_active"]).round(1)
+    required_cols = ['constructor_name', 'points']
+    for col in required_cols:
+        if col not in data.columns:
+            logger.warning(f"Column '{col}' not found for career aggregation")
+            return pd.DataFrame()
+    
+    agg_dict = {
+        'total_points': ('points', 'sum'),
+        'seasons_active': ('year', 'nunique') if 'year' in data.columns else ('constructor_name', 'count'),
+        'total_entries': ('resultId', 'count') if 'resultId' in data.columns else ('constructor_name', 'count'),
+    }
+    
+    if 'is_winner' in data.columns:
+        agg_dict['total_wins'] = ('is_winner', 'sum')
+    if 'is_podium' in data.columns:
+        agg_dict['total_podiums'] = ('is_podium', 'sum')
+    if 'is_dnf' in data.columns:
+        agg_dict['total_dnfs'] = ('is_dnf', 'sum')
+    if 'positionOrder' in data.columns:
+        agg_dict['avg_finish'] = ('positionOrder', 'mean')
+    if 'championship_wins' in data.columns:
+        agg_dict['championship_titles'] = ('championship_wins', 'sum')
+    
+    grouped = data.groupby('constructor_name').agg(**agg_dict).reset_index()
+    grouped = grouped.sort_values('total_points', ascending=False)
+    
+    if 'total_wins' in grouped.columns and 'total_entries' in grouped.columns:
+        grouped['win_rate_pct'] = (grouped['total_wins'] / grouped['total_entries'] * 100).round(1)
+    if 'total_dnfs' in grouped.columns and 'total_entries' in grouped.columns:
+        grouped['dnf_rate_pct'] = (grouped['total_dnfs'] / grouped['total_entries'] * 100).round(1)
+    if 'total_points' in grouped.columns and 'seasons_active' in grouped.columns:
+        grouped['points_per_season'] = (grouped['total_points'] / grouped['seasons_active']).round(1)
+    
     return grouped.round(2)
 
 
 def aggregate_reliability_by_status(data):
-    dnf_only = data[data["is_dnf"] == 1]
+    required_cols = ['year', 'constructor_name', 'status']
+    for col in required_cols:
+        if col not in data.columns:
+            logger.warning(f"Column '{col}' not found for reliability aggregation")
+            return pd.DataFrame()
+    
+    if 'is_dnf' not in data.columns:
+        return pd.DataFrame()
+    
+    dnf_only = data[data['is_dnf'] == 1]
+    if dnf_only.empty:
+        return pd.DataFrame()
+    
     grouped = (
-        dnf_only.groupby(["year", "constructor_name", "status"])
+        dnf_only.groupby(['year', 'constructor_name', 'status'])
         .size()
-        .reset_index(name="count")
-        .sort_values(["year", "constructor_name", "count"], ascending=[True, True, False])
+        .reset_index(name='count')
+        .sort_values(['year', 'constructor_name', 'count'], ascending=[True, True, False])
     )
     return grouped
 
 
 def aggregate_year_over_year_change(data):
-    season_points = aggregate_points_share(data)[["year", "constructor_name", "points"]]
-    season_points = season_points.sort_values(["constructor_name", "year"])
-    season_points["prev_year_points"] = season_points.groupby("constructor_name")["points"].shift(1)
-    season_points["points_delta"] = season_points["points"] - season_points["prev_year_points"]
-    prev = season_points["prev_year_points"].astype(float)
+    season_points = aggregate_points_share(data)
+    if season_points.empty:
+        return pd.DataFrame()
+    
+    season_points = season_points[['year', 'constructor_name', 'points']]
+    season_points = season_points.sort_values(['constructor_name', 'year'])
+    
+    season_points['prev_year_points'] = season_points.groupby('constructor_name')['points'].shift(1)
+    season_points['points_delta'] = season_points['points'] - season_points['prev_year_points']
+    
+    prev = season_points['prev_year_points'].astype(float)
     prev_safe = prev.where(prev != 0)
-    season_points["pct_change"] = ((season_points["points_delta"].astype(float) / prev_safe) * 100).round(1)
+    season_points['pct_change'] = ((season_points['points_delta'].astype(float) / prev_safe) * 100).round(1)
+    
     return season_points.round(2)
 
 
-def create_constructor_page(theme='dark'):
-    """Create the Constructor Evolution page"""
+def create_constructor_page(theme='dark', color_scheme='Viridis'):
+    """Create the Constructor Evolution page."""
     df = load_data()
     
-    # Theme colors
     if theme == 'dark':
         text_color, bg_color, card_bg, border_color = '#ffffff', '#0d0d1a', 'rgba(26, 26, 46, 0.85)', 'rgba(255, 255, 255, 0.08)'
         carbon, panel, hairline, ink, muted, amber, amber_dim, grid_line = '#15171C', '#1B1E26', 'rgba(237,233,225,0.10)', '#FFFFFF', '#C7CCD6', '#FFB100', 'rgba(255,177,0,0.18)', 'rgba(237,233,225,0.06)'
@@ -1078,192 +1268,274 @@ def create_constructor_page(theme='dark'):
         text_color, bg_color, card_bg, border_color = '#1a1a2e', '#f8f9fa', '#ffffff', '#e0e0e0'
         carbon, panel, hairline, ink, muted, amber, amber_dim, grid_line = '#f8f9fa', '#ffffff', 'rgba(0,0,0,0.10)', '#1a1a2e', '#666666', '#ff6b35', 'rgba(255,107,53,0.18)', 'rgba(0,0,0,0.06)'
     
-    # Pre-aggregate
     constructor_season = aggregate_constructor_season(df)
     points_share = aggregate_points_share(df)
     constructor_career = aggregate_constructor_career(df)
     reliability_by_status = aggregate_reliability_by_status(df)
     year_over_year = aggregate_year_over_year_change(df)
     
-    all_constructors = sorted(constructor_season["constructor_name"].unique())
-    default_constructors = [c for c in ["Mercedes", "Red Bull", "Ferrari", "McLaren"] if c in all_constructors] or all_constructors[:4]
-    year_min, year_max = int(df["year"].min()), int(df["year"].max())
+    all_constructors = sorted(constructor_season['constructor_name'].unique()) if not constructor_season.empty else []
+    default_constructors = [c for c in ['Mercedes', 'Red Bull', 'Ferrari', 'McLaren'] if c in all_constructors] or all_constructors[:4]
+    
+    if 'year' in df.columns:
+        year_min, year_max = int(df['year'].min()), int(df['year'].max())
+    else:
+        year_min, year_max = 2020, 2024
     
     metric_options = [
-        {"label": "Season Points", "value": "season_points"},
-        {"label": "Cumulative Points", "value": "cumulative"},
-        {"label": "Points Share %", "value": "points_share_pct"},
+        {'label': 'Season Points', 'value': 'season_points'},
+        {'label': 'Cumulative Points', 'value': 'cumulative'},
+        {'label': 'Points Share %', 'value': 'points_share_pct'},
     ]
     
     controls = dbc.Card(
         dbc.CardBody([
-            html.Div([html.I(className="fa fa-sliders-h me-2"), "Filters"],
-                    className="text-uppercase small fw-bold mb-3",
-                    style={"color": ACCENT_RED, "letterSpacing": "0.5px"}),
-            html.H6("Constructors", className="text-uppercase text-muted mb-2"),
+            html.Div([html.I(className='fa fa-sliders-h me-2'), 'Filters'],
+                    className='text-uppercase small fw-bold mb-3',
+                    style={'color': ACCENT_RED, 'letterSpacing': '0.5px'}),
+            
+            html.H6('Constructors', className='text-uppercase text-muted mb-2', style={'color': text_color}),
             dcc.Dropdown(
-                id="constructor-select",
-                options=[{"label": c, "value": c} for c in all_constructors],
+                id='constructor-select',
+                options=[{'label': c, 'value': c} for c in all_constructors],
                 value=default_constructors,
                 multi=True,
-                placeholder="Select constructors to compare",
+                placeholder='Select constructors to compare',
+                className='dark-dropdown',
+                style={
+                    'color': '#000000',
+                    'backgroundColor': '#ffffff'
+                }
             ),
             html.Br(),
-            html.H6("Season Range", className="text-uppercase text-muted mb-2"),
+            
+            html.H6('Season Range', className='text-uppercase text-muted mb-2', style={'color': text_color}),
             dcc.RangeSlider(
-                id="year-slider-constructor",
+                id='year-slider-constructor',
                 min=year_min,
                 max=year_max,
                 step=1,
                 value=[year_min, year_max],
-                marks={y: {"label": str(y), "style": {"color": "#9AA0AA", "fontWeight": "500"}} for y in range(year_min, year_max + 1)},
-                tooltip={"placement": "bottom", "always_visible": False},
+                marks={y: {'label': str(y), 'style': {'color': '#9AA0AA', 'fontWeight': '500'}} for y in range(year_min, year_max + 1)},
+                tooltip={'placement': 'bottom', 'always_visible': False},
             ),
             html.Br(),
-            html.H6("Metric (line chart)", className="text-uppercase text-muted mb-2"),
+            
+            html.H6('Metric (line chart)', className='text-uppercase text-muted mb-2', style={'color': text_color}),
             dcc.RadioItems(
-                id="metric-radio",
+                id='metric-radio',
                 options=metric_options,
-                value="season_points",
+                value='season_points',
                 inline=True,
-                inputStyle={"marginRight": "6px", "marginLeft": "12px"},
+                inputStyle={'marginRight': '6px', 'marginLeft': '12px'},
+                style={'color': text_color}
             ),
             html.Br(),
+            
             dbc.ButtonGroup([
-                dbc.Button("Reset Filters", id="btn-reset-constructor", color="secondary", size="sm"),
-                dbc.Button([html.I(className="fa fa-download me-1"), "Export CSV"],
-                           id="btn-download-constructor", color="primary", size="sm"),
+                dbc.Button('Reset Filters', id='btn-reset-constructor', color='secondary', size='sm'),
+                dbc.Button([html.I(className='fa fa-download me-1'), 'Export CSV'],
+                           id='btn-download-constructor', color='primary', size='sm'),
             ]),
-            dcc.Download(id="download-csv-constructor"),
+            dcc.Download(id='download-csv-constructor'),
         ]),
-        className="mb-3",
-        style={"background": f"linear-gradient(145deg, {SURFACE_RAISED}, {SURFACE})", 
-               "border": f"1px solid {BORDER}", 
-               "borderTop": f"4px solid {ACCENT_RED}", 
-               "borderRadius": "14px", 
-               "boxShadow": "0 10px 30px rgba(0,0,0,0.4)"}
+        className='mb-3',
+        style={
+            'background': f'linear-gradient(145deg, {SURFACE_RAISED}, {SURFACE})', 
+            'border': f'1px solid {BORDER}', 
+            'borderTop': f'4px solid {ACCENT_RED}', 
+            'borderRadius': '14px', 
+            'boxShadow': '0 10px 30px rgba(0,0,0,0.4)'
+        }
     )
-    
-    def style_fig(fig):
-        fig.update_layout(
-            template="plotly_dark",
-            font=dict(family=FONT_FAMILY, size=13, color="#E6E8EB"),
-            title_font=dict(size=17, family=FONT_FAMILY, color="#F5F6F7"),
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            margin=dict(l=50, r=30, t=60, b=40),
-            legend=dict(bgcolor="rgba(0,0,0,0)", bordercolor="rgba(0,0,0,0)"),
-            transition={"duration": 400},
-        )
-        fig.update_xaxes(gridcolor=BORDER, zerolinecolor=BORDER)
-        fig.update_yaxes(gridcolor=BORDER, zerolinecolor=BORDER)
-        return fig
     
     return html.Div([
         html.Div([
-            html.H2([html.Span("🏎️ "), "Constructor Evolution"]),
-            html.P("Module owner: Snehasish Haldar — Team improvement, decline, dominance, and reliability.", 
-                   className="text-muted mb-0"),
-        ], id="app-header", style={
-            "background": f"linear-gradient(120deg, {SURFACE_RAISED} 0%, {SURFACE} 70%)",
-            "borderBottom": f"3px solid {ACCENT_RED}",
-            "borderRadius": "14px",
-            "padding": "22px 28px",
-            "marginTop": "18px",
-            "marginBottom": "18px",
-            "boxShadow": "0 8px 24px rgba(0,0,0,0.35)"
+            html.H2([html.Span('🏎️ '), 'Constructor Evolution']),
+            html.P('Module owner: Snehasish Haldar — Team improvement, decline, dominance, and reliability.', 
+                   className='text-muted mb-0', style={'color': '#9AA0AA'}),
+        ], id='app-header', style={
+            'background': f'linear-gradient(120deg, {SURFACE_RAISED} 0%, {SURFACE} 70%)',
+            'borderBottom': f'3px solid {ACCENT_RED}',
+            'borderRadius': '14px',
+            'padding': '22px 28px',
+            'marginTop': '18px',
+            'marginBottom': '18px',
+            'boxShadow': '0 8px 24px rgba(0,0,0,0.35)'
         }),
+        
         dbc.Row([
             dbc.Col(controls, width=12, lg=3),
+            
             dbc.Col([
                 dcc.Tabs(
-                    id="view-tabs-constructor",
-                    value="tab-charts",
+                    id='view-tabs-constructor',
+                    value='tab-charts',
                     children=[
-                        dcc.Tab(label="Charts", value="tab-charts"),
-                        dcc.Tab(label="Drilldown", value="tab-drilldown"),
-                        dcc.Tab(label="Tables", value="tab-tables"),
+                        dcc.Tab(label='Charts', value='tab-charts'),
+                        dcc.Tab(label='Drilldown', value='tab-drilldown'),
+                        dcc.Tab(label='Tables', value='tab-tables'),
                     ],
                 ),
+                
                 html.Div([
-                    html.Div(id="panel-charts-constructor", style={"display": "block"}, children=[
-                        html.Div(id="kpi-cards-constructor", className="mb-3"),
-                        html.Div(dcc.Loading(dcc.Graph(id="line-chart-constructor", config={"displaylogo": False})), className="dash-graph-card"),
-                        html.Div(dcc.Loading(dcc.Graph(id="bar-chart-constructor", config={"displaylogo": False})), className="dash-graph-card"),
-                        html.Div(dcc.Loading(dcc.Graph(id="area-chart-constructor", config={"displaylogo": False})), className="dash-graph-card"),
-                        dbc.Card(dbc.CardBody(id="insights-constructor"), className="mt-3"),
+                    html.Div(id='panel-charts-constructor', style={'display': 'block'}, children=[
+                        html.Div(id='kpi-cards-constructor', className='mb-3'),
+                        html.Div(dcc.Loading(dcc.Graph(id='line-chart-constructor', config={'displaylogo': False})), className='dash-graph-card'),
+                        html.Div(dcc.Loading(dcc.Graph(id='bar-chart-constructor', config={'displaylogo': False})), className='dash-graph-card'),
+                        html.Div(dcc.Loading(dcc.Graph(id='area-chart-constructor', config={'displaylogo': False})), className='dash-graph-card'),
+                        dbc.Card(dbc.CardBody(id='insights-constructor'), className='mt-3'),
                     ]),
-                    html.Div(id="panel-drilldown-constructor", style={"display": "none"}, children=[
-                        html.Div("Click a point on the line chart (Charts tab) to jump straight to it here.", className="text-muted mb-3"),
+                    
+                    html.Div(id='panel-drilldown-constructor', style={'display': 'none'}, children=[
+                        html.Div('Click a point on the line chart (Charts tab) to jump straight to it here.', 
+                                className='text-muted mb-3', 
+                                style={'color': '#9AA0AA'}),
+                        
                         dbc.Row([
                             dbc.Col(
-                                dcc.Dropdown(id="drilldown-year-select", options=[{"label": str(y), "value": y} for y in range(year_min, year_max + 1)], placeholder="Select a season"),
+                                html.Div([
+                                    html.Label('Select Season:', style={'color': text_color, 'marginRight': '10px'}),
+                                    dcc.Dropdown(
+                                        id='drilldown-year-select', 
+                                        options=[{'label': str(y), 'value': y} for y in range(year_min, year_max + 1)], 
+                                        placeholder='Select a season',
+                                        className='dark-dropdown',
+                                        style={
+                                            'color': '#000000',
+                                            'backgroundColor': '#ffffff',
+                                            'minWidth': '200px'
+                                        }
+                                    )
+                                ], style={'display': 'flex', 'alignItems': 'center'}),
                                 width=12, lg=4,
                             ),
                             dbc.Col(
-                                dcc.Dropdown(id="drilldown-constructor-select", options=[{"label": c, "value": c} for c in all_constructors], placeholder="Select a constructor"),
+                                html.Div([
+                                    html.Label('Select Constructor:', style={'color': text_color, 'marginRight': '10px'}),
+                                    dcc.Dropdown(
+                                        id='drilldown-constructor-select', 
+                                        options=[{'label': c, 'value': c} for c in all_constructors], 
+                                        placeholder='Select a constructor',
+                                        className='dark-dropdown',
+                                        style={
+                                            'color': '#000000',
+                                            'backgroundColor': '#ffffff',
+                                            'minWidth': '200px'
+                                        }
+                                    )
+                                ], style={'display': 'flex', 'alignItems': 'center'}),
                                 width=12, lg=4,
                             ),
-                        ], className="mb-3 g-2"),
-                        html.H5(id="drilldown-title", children="No point selected yet"),
+                        ], className='mb-3 g-2'),
+                        
+                        html.H5(id='drilldown-title', children='No point selected yet', style={'color': text_color}),
+                        
                         dbc.Row([
                             dbc.Col(
-                                dash_table.DataTable(id="drilldown-table", columns=[{"name": "Year", "id": "year"}, {"name": "Constructor", "id": "constructor_name"}, {"name": "Status", "id": "status"}, {"name": "Count", "id": "count"}], data=[], page_size=10, sort_action="native", filter_action="native", style_table={"overflowX": "auto"}, style_cell={"backgroundColor": SURFACE_RAISED, "color": "white", "border": f"1px solid {BORDER}", "fontFamily": FONT_FAMILY}, style_header={"backgroundColor": SURFACE, "fontWeight": "bold", "border": f"1px solid {BORDER}"}),
+                                dash_table.DataTable(
+                                    id='drilldown-table', 
+                                    columns=[
+                                        {'name': 'Year', 'id': 'year'}, 
+                                        {'name': 'Constructor', 'id': 'constructor_name'}, 
+                                        {'name': 'Status', 'id': 'status'}, 
+                                        {'name': 'Count', 'id': 'count'}
+                                    ], 
+                                    data=[], 
+                                    page_size=10, 
+                                    sort_action='native', 
+                                    filter_action='native', 
+                                    style_table={'overflowX': 'auto'}, 
+                                    style_cell={
+                                        'backgroundColor': SURFACE_RAISED, 
+                                        'color': 'white', 
+                                        'border': f'1px solid {BORDER}', 
+                                        'fontFamily': FONT_FAMILY
+                                    }, 
+                                    style_header={
+                                        'backgroundColor': SURFACE, 
+                                        'fontWeight': 'bold', 
+                                        'border': f'1px solid {BORDER}',
+                                        'color': 'white'
+                                    }
+                                ),
                                 width=12, lg=6,
                             ),
                             dbc.Col(
-                                html.Div(dcc.Loading(dcc.Graph(id="drilldown-pie-constructor", config={"displaylogo": False})), className="dash-graph-card"),
+                                html.Div(dcc.Loading(dcc.Graph(id='drilldown-pie-constructor', config={'displaylogo': False})), className='dash-graph-card'),
                                 width=12, lg=6,
                             ),
                         ])
                     ]),
-                    html.Div(id="panel-tables-constructor", style={"display": "none"}, children=[
-                        html.H5("All-time Constructor Leaderboard"),
+                    
+                    html.Div(id='panel-tables-constructor', style={'display': 'none'}, children=[
+                        html.H5('All-time Constructor Leaderboard', style={'color': text_color}),
                         dash_table.DataTable(
-                            id="career-table",
-                            columns=[{"name": c, "id": c} for c in constructor_career.columns],
-                            data=constructor_career.to_dict("records"),
+                            id='career-table',
+                            columns=[{'name': c, 'id': c} for c in constructor_career.columns] if not constructor_career.empty else [],
+                            data=constructor_career.to_dict('records') if not constructor_career.empty else [],
                             page_size=10,
-                            sort_action="native",
-                            filter_action="native",
-                            style_table={"overflowX": "auto"},
-                            style_cell={"backgroundColor": SURFACE_RAISED, "color": "white", "border": f"1px solid {BORDER}", "fontFamily": FONT_FAMILY},
-                            style_header={"backgroundColor": SURFACE, "fontWeight": "bold", "border": f"1px solid {BORDER}"},
+                            sort_action='native',
+                            filter_action='native',
+                            style_table={'overflowX': 'auto'},
+                            style_cell={
+                                'backgroundColor': SURFACE_RAISED, 
+                                'color': 'white', 
+                                'border': f'1px solid {BORDER}', 
+                                'fontFamily': FONT_FAMILY
+                            },
+                            style_header={
+                                'backgroundColor': SURFACE, 
+                                'fontWeight': 'bold', 
+                                'border': f'1px solid {BORDER}',
+                                'color': 'white'
+                            },
                         ),
                         html.Br(),
-                        html.H5("Year-over-Year Points Change"),
+                        html.H5('Year-over-Year Points Change', style={'color': text_color}),
                         dash_table.DataTable(
-                            id="yoy-table-constructor",
-                            columns=[{"name": c, "id": c} for c in year_over_year.columns],
+                            id='yoy-table-constructor',
+                            columns=[{'name': c, 'id': c} for c in year_over_year.columns] if not year_over_year.empty else [],
                             data=[],
                             page_size=10,
-                            sort_action="native",
-                            filter_action="native",
-                            style_table={"overflowX": "auto"},
-                            style_cell={"backgroundColor": SURFACE_RAISED, "color": "white", "border": f"1px solid {BORDER}", "fontFamily": FONT_FAMILY},
-                            style_header={"backgroundColor": SURFACE, "fontWeight": "bold", "border": f"1px solid {BORDER}"},
+                            sort_action='native',
+                            filter_action='native',
+                            style_table={'overflowX': 'auto'},
+                            style_cell={
+                                'backgroundColor': SURFACE_RAISED, 
+                                'color': 'white', 
+                                'border': f'1px solid {BORDER}', 
+                                'fontFamily': FONT_FAMILY
+                            },
+                            style_header={
+                                'backgroundColor': SURFACE, 
+                                'fontWeight': 'bold', 
+                                'border': f'1px solid {BORDER}',
+                                'color': 'white'
+                            },
                         ),
                     ]),
-                ], className="mt-3"),
+                ], className='mt-3'),
             ], width=12, lg=9),
         ]),
-        html.Hr(style={"borderColor": BORDER}),
+        
+        html.Hr(style={'borderColor': BORDER}),
         html.Small(
-            "Chart justification: Line charts best convey temporal trends in constructor points. Stacked bars show finish vs DNF composition. Area charts express dominance share continuously.",
-            className="text-muted",
+            'Chart justification: Line charts best convey temporal trends in constructor points. Stacked bars show finish vs DNF composition. Area charts express dominance share continuously.',
+            className='text-muted',
+            style={'color': '#9AA0AA'}
         ),
-        html.Div(id="resize-trigger-constructor", style={"display": "none"}),
+        html.Div(id='resize-trigger-constructor', style={'display': 'none'}),
     ])
 
 
 # ============================================================
-# SLOT 6: QUALIFYING VS RACE PAGE - UPDATED WITH FILTERS
+# SLOT 6: QUALIFYING VS RACE PAGE
 # ============================================================
 def create_qualifying_page(theme='dark'):
     """Create the Qualifying vs Race page with filters"""
     df = load_data()
     
-    # Theme colors
     if theme == 'dark':
         text_color, bg_color, card_bg, border_color = '#ffffff', '#0d0d1a', 'rgba(26, 26, 46, 0.85)', 'rgba(255, 255, 255, 0.08)'
         carbon, panel, hairline, ink, muted, amber, amber_dim, grid_line = '#15171C', '#1B1E26', 'rgba(237,233,225,0.10)', '#FFFFFF', '#C7CCD6', '#FFB100', 'rgba(255,177,0,0.18)', 'rgba(237,233,225,0.06)'
@@ -1271,27 +1543,22 @@ def create_qualifying_page(theme='dark'):
         text_color, bg_color, card_bg, border_color = '#1a1a2e', '#f8f9fa', '#ffffff', '#e0e0e0'
         carbon, panel, hairline, ink, muted, amber, amber_dim, grid_line = '#f8f9fa', '#ffffff', 'rgba(0,0,0,0.10)', '#1a1a2e', '#666666', '#ff6b35', 'rgba(255,107,53,0.18)', 'rgba(0,0,0,0.06)'
     
-    # Get unique values for filters
     available_years = sorted(df['year'].unique()) if 'year' in df.columns else []
     available_teams = sorted(df['constructor_name'].unique()) if 'constructor_name' in df.columns else []
     
-    # Clean data for qualifying analysis
     df_clean = df[(df['grid'] >= 1) & (df['grid'] <= 20) &
                   (df['positionOrder'] >= 1) & (df['positionOrder'] <= 20)].copy()
     
-    # Add jittered columns for better visualization
     np.random.seed(42)
     df_clean['grid_jittered'] = df_clean['grid'] + np.random.uniform(-0.15, 0.15, len(df_clean))
     df_clean['position_jittered'] = df_clean['positionOrder'] + np.random.uniform(-0.15, 0.15, len(df_clean))
     
-    # Customdata for hover
     df_clean['customdata'] = list(np.stack((
         df_clean['year'].astype(str), df_clean['race_name'],
         df_clean['grid'].astype(str), df_clean['positionOrder'].astype(str),
         df_clean['positions_gained'].astype(str), df_clean['status']
     ), axis=-1))
     
-    # F1 Team Colors
     f1_team_colors = {
         'Ferrari': '#DC0000', 'Red Bull': '#3671C6', 'Mercedes': '#27F4D2',
         'McLaren': '#FF8000', 'Aston Martin': '#00A19C', 'Alpine F1 Team': '#FF87BC',
@@ -1303,11 +1570,7 @@ def create_qualifying_page(theme='dark'):
     unique_teams = sorted([team for team in f1_team_colors.keys() if team in df_clean['constructor_name'].unique()])
     min_year, max_year = int(df_clean['year'].min()), int(df_clean['year'].max())
     
-    # ============================================================
-    # BUILD PAGE WITH FILTERS
-    # ============================================================
     return html.Div([
-        # ---- Header : angled band, timing-tower eyebrow ----
         html.Div([
             html.Div([
                 html.Span("SESSION DATA · ", className='mono', style={'color': MUTED, 'fontSize': '12px'}),
@@ -1326,8 +1589,6 @@ def create_qualifying_page(theme='dark'):
         }),
 
         html.Div([
-
-            # ---- Controls row ----
             html.Div([
                 html.Div([
                     html.Div("MODE", className='mono', style={
@@ -1340,7 +1601,7 @@ def create_qualifying_page(theme='dark'):
                             {'label': 'ISOLATE ONE', 'value': 'single'}
                         ],
                         value='multi', inline=True, className='toggle-group',
-                        style={'color': INK}  # Make radio text visible
+                        style={'color': INK}
                     ),
                 ], style={'width': '22%', 'display': 'inline-block', 'verticalAlign': 'top'}),
 
@@ -1353,11 +1614,11 @@ def create_qualifying_page(theme='dark'):
                         options=[{'label': t, 'value': t} for t in unique_teams],
                         value=['Red Bull', 'Mercedes', 'Ferrari'] if 'Red Bull' in unique_teams else unique_teams[:3],
                         multi=True,
+                        className='dark-dropdown',
                         style={
-                            'color': '#000000',  # Dropdown text color
+                            'color': '#000000',
                             'backgroundColor': '#ffffff'
-                        },
-                        className='dark-dropdown'  # Custom class for styling
+                        }
                     )
                 ], style={'width': '38%', 'display': 'inline-block', 'verticalAlign': 'top', 'padding': '0 24px'}),
 
@@ -1372,7 +1633,7 @@ def create_qualifying_page(theme='dark'):
                         value=[min_year, min_year],
                         allowCross=False,  
                         updatemode='mouseup',
-                        className='dark-slider'  # Custom class for styling
+                        className='dark-slider'
                     )
                 ], style={'width': '36%', 'display': 'inline-block', 'verticalAlign': 'top'}),
 
@@ -1381,7 +1642,6 @@ def create_qualifying_page(theme='dark'):
                 'border': f'1px solid {HAIRLINE}', 'borderRadius': '3px', 'marginBottom': '16px'
             }),
 
-            # ---- Stat readout strip (signature element) ----
             html.Div([
                 html.Div([
                     html.Div("RESULTS PLOTTED", className='mono', style={
@@ -1421,7 +1681,6 @@ def create_qualifying_page(theme='dark'):
                 }),
             ], style={'display': 'flex', 'gap': '2px', 'marginBottom': '16px'}),
 
-            # ---- Scatter Chart ----
             html.Div([
                 dcc.Graph(id='f1-scatter-plot', config={'displaylogo': False})
             ], style={
@@ -1429,7 +1688,6 @@ def create_qualifying_page(theme='dark'):
                 'borderRadius': '3px', 'padding': '16px', 'marginBottom': '16px'
             }),
 
-            # ---- Heatmap Chart (Frequency) ----
             html.Div([
                 html.Div("POSITION DENSITY HEATMAP", className='mono', style={
                     'fontSize': '11px', 'letterSpacing': '1.5px', 'color': MUTED, 'marginBottom': '12px'
@@ -1440,7 +1698,6 @@ def create_qualifying_page(theme='dark'):
                 'borderRadius': '3px', 'padding': '16px', 'marginBottom': '16px'
             }),
 
-            # ---- Correlation Matrix Heatmap ----
             html.Div([
                 html.Div("CORRELATION MATRIX", className='mono', style={
                     'fontSize': '11px', 'letterSpacing': '1.5px', 'color': MUTED, 'marginBottom': '12px'
@@ -1456,14 +1713,7 @@ def create_qualifying_page(theme='dark'):
     ], style={'backgroundColor': CARBON, 'minHeight': '100vh'})
 
 
-# ============================================================
-# QUALIFYING VS RACE CALLBACKS
-# ============================================================
 def register_qualifying_callbacks(app):
-    
-    # ============================================================
-    # Callback 1 — mode toggle
-    # ============================================================
     @app.callback(
         [Output('team-filter', 'multi'), Output('team-filter', 'value')],
         Input('view-mode', 'value'),
@@ -1479,9 +1729,6 @@ def register_qualifying_callbacks(app):
                 val = ['Red Bull', 'Mercedes', 'Ferrari']
             return True, val
 
-    # ============================================================
-    # Callback 2 — graph + stat readouts + heatmap
-    # ============================================================
     @app.callback(
         [Output('f1-scatter-plot', 'figure'),
          Output('f1-heatmap', 'figure'),
@@ -1496,7 +1743,6 @@ def register_qualifying_callbacks(app):
         df = load_data()
         fig_scatter = go.Figure()
 
-        # Base diagonal line for scatter
         fig_scatter.add_shape(
             type="line", layer="below", x0=1, y0=1, x1=20, y1=20,
             line=dict(color="rgba(237,233,225,0.22)", width=1.5, dash="dash")
@@ -1509,11 +1755,9 @@ def register_qualifying_callbacks(app):
 
         year_lo, year_hi = sorted([int(y) for y in year_range])
         
-        # Clean data
         df_clean = df[(df['grid'] >= 1) & (df['grid'] <= 20) &
                       (df['positionOrder'] >= 1) & (df['positionOrder'] <= 20)].copy()
         
-        # Add jittered columns
         np.random.seed(42)
         df_clean['grid_jittered'] = df_clean['grid'] + np.random.uniform(-0.15, 0.15, len(df_clean))
         df_clean['position_jittered'] = df_clean['positionOrder'] + np.random.uniform(-0.15, 0.15, len(df_clean))
@@ -1536,7 +1780,6 @@ def register_qualifying_callbacks(app):
                (df_clean['constructor_name'].isin(selected_teams))
         filtered_df = df_clean[mask]
 
-        # Populate Scatter Plot
         for team in selected_teams:
             team_df = filtered_df[filtered_df['constructor_name'] == team]
             
@@ -1554,7 +1797,6 @@ def register_qualifying_callbacks(app):
                               "<br>Net Change: %{customdata[4]} positions<br>Status: %{customdata[5]}<extra></extra>"
             ))
 
-        # Configure Scatter Layout
         fig_scatter.update_layout(
             uirevision='constant', paper_bgcolor=PANEL, plot_bgcolor=PANEL,
             font=dict(family='IBM Plex Mono, monospace', color=INK, size=12),
@@ -1565,7 +1807,6 @@ def register_qualifying_callbacks(app):
             hoverlabel=dict(bgcolor=CARBON, font=dict(color=INK, family='IBM Plex Mono, monospace', size=11), bordercolor=HAIRLINE)
         )
 
-        # Populate Heatmap (Frequency)
         fig_heat = go.Figure(go.Histogram2d(
             x=filtered_df['grid'] if not filtered_df.empty else [0],
             y=filtered_df['positionOrder'] if not filtered_df.empty else [0],
@@ -1587,13 +1828,11 @@ def register_qualifying_callbacks(app):
             hovertemplate="Grid: P%{x}<br>Finish: P%{y}<br>Count: %{z}<extra></extra>"
         ))
 
-        # Base diagonal line for heatmap
         fig_heat.add_shape(
             type="line", layer="above", x0=1, y0=1, x1=20, y1=20,
             line=dict(color="rgba(237,233,225,0.4)", width=1.5, dash="dash")
         )
 
-        # Configure Heatmap Layout
         fig_heat.update_layout(
             uirevision='constant_heat', paper_bgcolor=PANEL, plot_bgcolor=PANEL,
             font=dict(family='IBM Plex Mono, monospace', color=INK, size=12),
@@ -1603,9 +1842,6 @@ def register_qualifying_callbacks(app):
             hoverlabel=dict(bgcolor=CARBON, font=dict(color=INK, family='IBM Plex Mono, monospace', size=11), bordercolor=HAIRLINE)
         )
 
-        # ==========================================
-        # Populate Heatmap (Correlation Matrix)
-        # ==========================================
         corr_cols = ['grid', 'positionOrder', 'positions_gained']
         labels = ['Grid Position', 'Finish Position', 'Positions Gained']
         
@@ -1647,7 +1883,6 @@ def register_qualifying_callbacks(app):
             hoverlabel=dict(bgcolor=CARBON, font=dict(color=INK, family='IBM Plex Mono, monospace', size=11), bordercolor=HAIRLINE)
         )
 
-        # ---- Stat readouts ----
         n_results = len(filtered_df)
         avg_gain = filtered_df['positions_gained'].mean() if n_results else 0
         if n_results:
@@ -1658,21 +1893,19 @@ def register_qualifying_callbacks(app):
 
         return fig_scatter, fig_heat, fig_corr_heat, f"{n_results:,}", f"{avg_gain:+.2f}", best_drive
 
-# Register the callbacks
-register_qualifying_callbacks(app)# ============================================================
-# SLOT 7: RACE STRATEGY PAGE - UPDATED WITH NEW JUSTIFICATIONS
+
+# ============================================================
+# SLOT 7: RACE STRATEGY PAGE
 # ============================================================
 def create_strategy_page(theme='dark'):
-    """Create the Race Strategy Analysis page"""
+    """Create the Race Strategy Analysis page."""
     df = load_data()
     
-    # Theme colors
     if theme == 'dark':
         text_color, bg_color, card_bg, border_color = '#ffffff', '#0d0d1a', 'rgba(26, 26, 46, 0.85)', 'rgba(255, 255, 255, 0.08)'
     else:
         text_color, bg_color, card_bg, border_color = '#1a1a2e', '#f8f9fa', '#ffffff', '#e0e0e0'
     
-    # CHART THEME CONSTANTS
     ACCENT = "#3987e5"
     TREND = "#eda100"
     GAIN = "#0ca30c"
@@ -1699,7 +1932,6 @@ def create_strategy_page(theme='dark'):
         font=dict(color="#e6e6e6"),
     )
     
-    # Prepare data for strategy analysis
     df['avg_pit_s'] = df['avg_pit_ms'] / 1000 if 'avg_pit_ms' in df.columns else 0
     df['fastest_pit_s'] = df['fastest_pit_ms'] / 1000 if 'fastest_pit_ms' in df.columns else 0
     df['slowest_pit_s'] = df['slowest_pit_ms'] / 1000 if 'slowest_pit_ms' in df.columns else 0
@@ -1712,16 +1944,14 @@ def create_strategy_page(theme='dark'):
     df['valid_grid'] = df['grid'] > 0 if 'grid' in df.columns else False
     df['race_label'] = df['year'].astype(int).astype(str) + " - " + df['race_name'].astype(str)
     
-    # Get available races for dropdown
     race_options = sorted(df['race_label'].dropna().unique()) if 'race_label' in df.columns else []
+    selected_race = race_options[0] if race_options else None
     
-    # CHART 1: Density Heatmap - Pit-stop Duration vs Positions Gained
     scatter_df = df[df['pit_stop_count'] > 0].copy()
     scatter_df = scatter_df[scatter_df['normal_pit_stop']].copy()
     scatter_df = scatter_df[scatter_df['valid_grid']].copy()
     
     fig1 = go.Figure()
-    
     if not scatter_df.empty:
         x = scatter_df['avg_pit_s']
         y = scatter_df['positions_gained']
@@ -1742,7 +1972,6 @@ def create_strategy_page(theme='dark'):
             )
         )
         
-        # Binned mean-trend line
         bins = np.linspace(x.min(), min(x.max(), 45), 13)
         band = pd.cut(x, bins=bins)
         trend_data = (
@@ -1786,7 +2015,6 @@ def create_strategy_page(theme='dark'):
             **PLOT_LAYOUT,
         )
     
-    # CHART 2: Constructor Box Plot
     box_df = df[df['normal_pit_stop']].copy()
     
     if not box_df.empty:
@@ -1840,7 +2068,6 @@ def create_strategy_page(theme='dark'):
         fig2.add_annotation(text="No constructor pit-stop data available", showarrow=False)
         fig2.update_layout(**PLOT_LAYOUT, height=550)
     
-    # CHART 3: Pit Duration Histogram
     hist_df = df[df['normal_pit_stop']].copy()
     
     if not hist_df.empty:
@@ -1879,8 +2106,7 @@ def create_strategy_page(theme='dark'):
         fig3.add_annotation(text="No pit-stop duration data available", showarrow=False)
         fig3.update_layout(**PLOT_LAYOUT, height=500)
     
-    # CHART 4: Race Dumbbell Chart
-    selected_race = race_options[0] if race_options else None
+    # CHART 4: Race Dumbbell Chart - Initial
     race_df = df[df['race_label'] == selected_race].copy() if selected_race else pd.DataFrame()
     race_df = race_df[race_df['valid_grid']].copy() if not race_df.empty else pd.DataFrame()
     
@@ -1899,7 +2125,6 @@ def create_strategy_page(theme='dark'):
         
         color_for = {"Gained": GAIN, "Lost": LOSS, "No change": NEUTRAL}
         
-        # Connector lines
         for group in ["Gained", "Lost", "No change"]:
             seg = race_df[race_df["positions_gained"].apply(_delta_group) == group]
             xs, ys = [], []
@@ -1916,7 +2141,6 @@ def create_strategy_page(theme='dark'):
                     )
                 )
         
-        # Grid markers
         fig4.add_trace(
             go.Scatter(
                 x=race_df["grid"], y=race_df["driver_name"], mode="markers",
@@ -1926,7 +2150,6 @@ def create_strategy_page(theme='dark'):
             )
         )
         
-        # Finish markers
         for group in ["Gained", "Lost", "No change"]:
             seg = race_df[race_df["positions_gained"].apply(_delta_group) == group]
             if seg.empty:
@@ -1957,7 +2180,7 @@ def create_strategy_page(theme='dark'):
             )
         
         fig4.update_layout(
-            title="Race-level Strategy: Grid -> Finish (marker size = pit stops)",
+            title=f"Race-level Strategy: Grid -> Finish (marker size = pit stops) - {selected_race}",
             xaxis_title="Position (1 = best)  -  left is better",
             yaxis_title="Driver",
             height=600,
@@ -1966,7 +2189,6 @@ def create_strategy_page(theme='dark'):
             **PLOT_LAYOUT,
         )
     else:
-        fig4 = go.Figure()
         fig4.add_annotation(text="No race data available", showarrow=False)
         fig4.update_layout(**PLOT_LAYOUT, height=600)
     
@@ -2024,12 +2246,10 @@ def create_strategy_page(theme='dark'):
         fig5.add_annotation(text="No data available for correlation heatmap", showarrow=False)
         fig5.update_layout(**PLOT_LAYOUT, height=600)
     
-    # Calculate stats for display
     total_records = len(scatter_df) if not scatter_df.empty else 0
     avg_pit = scatter_df['avg_pit_s'].mean() if not scatter_df.empty else 0
     avg_gain = scatter_df['positions_gained'].mean() if not scatter_df.empty else 0
     
-    # Get fastest constructor
     if not box_df.empty:
         fastest_constructor = (
             box_df.groupby('constructor_name')['avg_pit_s']
@@ -2040,9 +2260,6 @@ def create_strategy_page(theme='dark'):
     else:
         fastest_constructor = 'N/A'
     
-    # ============================================================
-    # BUILD THE PAGE
-    # ============================================================
     return html.Div([
         html.Div([
             html.H2([html.Span("📈 "), "Race Strategy Analysis"]),
@@ -2058,7 +2275,6 @@ def create_strategy_page(theme='dark'):
             "boxShadow": "0 8px 24px rgba(0,0,0,0.35)"
         }),
         
-        # Stats cards
         html.Div([
             html.Div([
                 html.H3(f"{total_records:,}", className="stat-number", style={'color': '#ff6b35'}),
@@ -2078,7 +2294,6 @@ def create_strategy_page(theme='dark'):
             ], className="stat-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}'})
         ], className="stats-grid"),
         
-        # Race selector for dumbbell chart
         html.Div([
             html.Div([
                 html.Label("🏁 Select Race:", style={'color': text_color, 'fontWeight': 'bold', 'marginRight': '10px'}),
@@ -2087,19 +2302,23 @@ def create_strategy_page(theme='dark'):
                     options=[{'label': r, 'value': r} for r in race_options],
                     value=selected_race if selected_race else None,
                     clearable=False,
-                    style={'width': '300px', 'backgroundColor': '#ffffff', 'color': '#000000', 'border': '1px solid #cccccc', 'borderRadius': '4px'}
+                    className='dark-dropdown',
+                    style={
+                        'width': '300px', 
+                        'backgroundColor': '#ffffff', 
+                        'color': '#000000', 
+                        'border': '1px solid #cccccc', 
+                        'borderRadius': '4px'
+                    }
                 )
             ], style={'display': 'flex', 'alignItems': 'center', 'marginBottom': '20px'})
         ]),
         
-        # Charts
         html.Div([
-            # Row 1: Density Heatmap (Full Width)
             html.Div([
                 dcc.Graph(figure=fig1, config={'displayModeBar': True})
             ], className="chart-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '15px', 'borderRadius': '12px'}),
             
-            # Row 2: Box Plot + Histogram (2 columns)
             html.Div([
                 html.Div([
                     dcc.Graph(figure=fig2, config={'displayModeBar': True})
@@ -2109,18 +2328,19 @@ def create_strategy_page(theme='dark'):
                 ], className="chart-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '15px', 'borderRadius': '12px'})
             ], className="charts-grid"),
             
-            # Row 3: Dumbbell Chart (Full Width)
             html.Div([
-                dcc.Graph(figure=fig4, config={'displayModeBar': True})
+                dcc.Graph(
+                    id='strategy-dumbbell-chart',
+                    figure=fig4, 
+                    config={'displayModeBar': True}
+                )
             ], className="chart-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '15px', 'borderRadius': '12px'}),
             
-            # Row 4: Correlation Heatmap (Full Width)
             html.Div([
                 dcc.Graph(figure=fig5, config={'displayModeBar': True})
             ], className="chart-card", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '15px', 'borderRadius': '12px'})
         ]),
         
-        # Key Insights
         html.Div([
             html.H3("💡 Key Insights", className="insights-title", style={'color': text_color}),
             html.Div([
@@ -2147,13 +2367,9 @@ def create_strategy_page(theme='dark'):
             ], className="insights-grid")
         ], className="insights-container", style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}', 'padding': '20px', 'borderRadius': '12px', 'marginBottom': '20px'}),
         
-        # ============================================================
-        # CHART JUSTIFICATIONS - UPDATED
-        # ============================================================
         html.Div([
             html.H3("📋 Chart Justifications", className="insights-title", style={'color': text_color}),
             html.Div([
-
                 html.Div([
                     html.Span("📊 ", style={'fontSize': '20px'}),
                     html.Span("1. Density heatmap + mean trend — Pit-stop duration vs positions gained: ",
@@ -2166,7 +2382,6 @@ def create_strategy_page(theme='dark'):
                         style={'color': text_color})
                 ], className="insight-item",
                 style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}'}),
-
                 html.Div([
                     html.Span("📦 ", style={'fontSize': '20px'}),
                     html.Span("2. Box plot — Pit-stop duration by constructor: ",
@@ -2179,7 +2394,6 @@ def create_strategy_page(theme='dark'):
                         style={'color': text_color})
                 ], className="insight-item",
                 style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}'}),
-
                 html.Div([
                     html.Span("📈 ", style={'fontSize': '20px'}),
                     html.Span("3. Histogram — Pit-stop duration distribution: ",
@@ -2191,7 +2405,6 @@ def create_strategy_page(theme='dark'):
                         style={'color': text_color})
                 ], className="insight-item",
                 style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}'}),
-
                 html.Div([
                     html.Span("🏁 ", style={'fontSize': '20px'}),
                     html.Span("4. Grid → finish dumbbell — Strategy comparison within one race: ",
@@ -2203,7 +2416,6 @@ def create_strategy_page(theme='dark'):
                         style={'color': text_color})
                 ], className="insight-item",
                 style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}'}),
-
                 html.Div([
                     html.Span("🔗 ", style={'fontSize': '20px'}),
                     html.Span("5. Correlation heatmap — Strategy and outcome relationships: ",
@@ -2216,7 +2428,6 @@ def create_strategy_page(theme='dark'):
                         style={'color': text_color})
                 ], className="insight-item",
                 style={'backgroundColor': card_bg, 'border': f'1px solid {border_color}'})
-
             ], className="insights-grid")
         ], className="insights-container",
         style={
@@ -2227,10 +2438,135 @@ def create_strategy_page(theme='dark'):
             'marginBottom': '20px'
         })
     ])
+
+
 # ============================================================
-# SLOT 8: CIRCUIT INTELLIGENCE PAGE
+# SLOT 8: RACE STRATEGY CALLBACKS
 # ============================================================
-# Circuit Intelligence Theme Constants
+@app.callback(
+    Output('strategy-dumbbell-chart', 'figure'),
+    [Input('strategy-race-dropdown', 'value')]
+)
+def update_strategy_dumbbell(selected_race):
+    """Update the dumbbell chart when a race is selected."""
+    df = load_data()
+    
+    # Prepare data
+    df['avg_pit_s'] = df['avg_pit_ms'] / 1000 if 'avg_pit_ms' in df.columns else 0
+    df['normal_pit_stop'] = (
+        (df['pit_stop_count'] > 0) &
+        (df['avg_pit_ms'].between(15000, 60000))
+    ) if 'avg_pit_ms' in df.columns else False
+    df['valid_grid'] = df['grid'] > 0 if 'grid' in df.columns else False
+    df['race_label'] = df['year'].astype(int).astype(str) + " - " + df['race_name'].astype(str)
+    
+    race_options = sorted(df['race_label'].dropna().unique()) if 'race_label' in df.columns else []
+    
+    if selected_race is None or selected_race not in race_options:
+        selected_race = race_options[0] if race_options else None
+    
+    race_df = df[df['race_label'] == selected_race].copy() if selected_race else pd.DataFrame()
+    race_df = race_df[race_df['valid_grid']].copy() if not race_df.empty else pd.DataFrame()
+    
+    GAIN = "#0ca30c"
+    LOSS = "#d03b3b"
+    NEUTRAL = "#898781"
+    
+    PLOT_LAYOUT = dict(
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#e6e6e6"),
+    )
+    
+    fig4 = go.Figure()
+    
+    if not race_df.empty:
+        race_df = race_df.sort_values("positionOrder", ascending=False)
+        drivers = race_df["driver_name"].tolist()
+        
+        def _delta_group(g):
+            if g > 0:
+                return "Gained"
+            if g < 0:
+                return "Lost"
+            return "No change"
+        
+        color_for = {"Gained": GAIN, "Lost": LOSS, "No change": NEUTRAL}
+        
+        for group in ["Gained", "Lost", "No change"]:
+            seg = race_df[race_df["positions_gained"].apply(_delta_group) == group]
+            xs, ys = [], []
+            for _, r in seg.iterrows():
+                xs += [r["grid"], r["positionOrder"], None]
+                ys += [r["driver_name"], r["driver_name"], None]
+            if xs:
+                fig4.add_trace(
+                    go.Scatter(
+                        x=xs, y=ys, mode="lines",
+                        line=dict(color=color_for[group], width=3),
+                        name=group, legendgroup=group,
+                        hoverinfo="skip",
+                    )
+                )
+        
+        fig4.add_trace(
+            go.Scatter(
+                x=race_df["grid"], y=race_df["driver_name"], mode="markers",
+                marker=dict(symbol="circle-open", size=11, color=NEUTRAL,
+                            line=dict(width=2, color=NEUTRAL)),
+                name="Grid (start)", hoverinfo="skip",
+            )
+        )
+        
+        for group in ["Gained", "Lost", "No change"]:
+            seg = race_df[race_df["positions_gained"].apply(_delta_group) == group]
+            if seg.empty:
+                continue
+            sizes = 10 + seg["pit_stop_count"].fillna(0) * 4
+            symbols = ["x-thin" if d else "circle" for d in seg["is_dnf"].fillna(0)]
+            fig4.add_trace(
+                go.Scatter(
+                    x=seg["positionOrder"], y=seg["driver_name"], mode="markers",
+                    marker=dict(size=sizes, color=color_for[group],
+                                symbol=symbols, line=dict(width=1.5, color="#141414")),
+                    name=f"Finish ({group.lower()})", legendgroup=group,
+                    showlegend=False,
+                    customdata=np.stack([
+                        seg["constructor_name"], seg["grid"], seg["positionOrder"],
+                        seg["positions_gained"], seg["pit_stop_count"].fillna(0),
+                        seg["status"],
+                    ], axis=-1),
+                    hovertemplate=(
+                        "<b>%{y}</b><br>"
+                        "Team: %{customdata[0]}<br>"
+                        "Grid: P%{customdata[1]}  ->  Finish: P%{customdata[2]}<br>"
+                        "Positions gained: %{customdata[3]}<br>"
+                        "Pit stops: %{customdata[4]}<br>"
+                        "Status: %{customdata[5]}<extra></extra>"
+                    ),
+                )
+            )
+        
+        fig4.update_layout(
+            title=f"Race-level Strategy: Grid -> Finish (marker size = pit stops) - {selected_race}",
+            xaxis_title="Position (1 = best)  -  left is better",
+            yaxis_title="Driver",
+            height=600,
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+            yaxis=dict(categoryorder="array", categoryarray=drivers),
+            **PLOT_LAYOUT,
+        )
+    else:
+        fig4.add_annotation(text="No race data available", showarrow=False)
+        fig4.update_layout(**PLOT_LAYOUT, height=600)
+    
+    return fig4
+
+
+# ============================================================
+# SLOT 9: CIRCUIT INTELLIGENCE PAGE
+# ============================================================
 CIRCUIT_BG_DARK = "#15151E"
 CIRCUIT_CARD_BG = "#1F1F2B"
 CIRCUIT_GRID_COLOR = "#33333F"
@@ -2262,9 +2598,7 @@ CIRCUIT_METRIC_LABELS = {
 
 
 def load_circuit_data():
-    """Load and prepare circuit data"""
-    df = load_data()
-    return df
+    return load_data()
 
 
 def filter_circuit_data(df, year_range, countries, constructors):
@@ -2537,14 +2871,13 @@ CIRCUIT_DROPDOWN_STYLE = {"color": "#111", "backgroundColor": "#fff"}
 
 
 def create_circuit_page(theme='dark'):
-    """Create the Circuit Intelligence page"""
+    """Create the Circuit Intelligence page."""
     df = load_circuit_data()
     
     YEAR_MIN, YEAR_MAX = int(df["year"].min()), int(df["year"].max())
     ALL_COUNTRIES = sorted(df["country"].dropna().unique().tolist())
     ALL_CONSTRUCTORS = sorted(df["constructor_name"].dropna().unique().tolist())
     
-    # Theme colors
     if theme == 'dark':
         bg_color, text_color, card_bg = CIRCUIT_BG_DARK, CIRCUIT_TEXT_LIGHT, CIRCUIT_CARD_BG
     else:
@@ -2553,7 +2886,6 @@ def create_circuit_page(theme='dark'):
     return html.Div([
         dcc.Store(id="selected-circuit-store", data=None),
         
-        # Header
         html.Div([
             html.H1("🏎️ Circuit Intelligence", style={
                 "color": text_color, "fontSize": "38px", "margin": "0", "fontWeight": "700",
@@ -2562,7 +2894,6 @@ def create_circuit_page(theme='dark'):
                    style={"color": CIRCUIT_TEXT_MUTED, "marginTop": "4px"}),
         ], style={"marginBottom": "20px"}),
         
-        # Filter Bar
         html.Div([
             html.Div([
                 circuit_filter_label("Season Range"),
@@ -2577,20 +2908,20 @@ def create_circuit_page(theme='dark'):
             html.Div([
                 circuit_filter_label("Country"),
                 dcc.Dropdown(id="circuit-country-filter", options=[{"label": c, "value": c} for c in ALL_COUNTRIES],
-                             multi=True, placeholder="All countries", style=CIRCUIT_DROPDOWN_STYLE),
+                             multi=True, placeholder="All countries", className='dark-dropdown', style=CIRCUIT_DROPDOWN_STYLE),
             ], style={"flex": "2", "minWidth": "200px", "padding": "0 15px"}),
             
             html.Div([
                 circuit_filter_label("Constructor"),
                 dcc.Dropdown(id="circuit-constructor-filter", options=[{"label": c, "value": c} for c in ALL_CONSTRUCTORS],
-                             multi=True, placeholder="All constructors", style=CIRCUIT_DROPDOWN_STYLE),
+                             multi=True, placeholder="All constructors", className='dark-dropdown', style=CIRCUIT_DROPDOWN_STYLE),
             ], style={"flex": "2", "minWidth": "200px", "padding": "0 15px"}),
             
             html.Div([
                 circuit_filter_label("Show"),
                 dcc.Dropdown(id="circuit-topn-filter",
                              options=[{"label": f"Top {n}", "value": str(n)} for n in [5, 10, 15, 20]] + [{"label": "All", "value": "all"}],
-                             value="10", clearable=False, style=CIRCUIT_DROPDOWN_STYLE),
+                             value="10", clearable=False, className='dark-dropdown', style=CIRCUIT_DROPDOWN_STYLE),
             ], style={"flex": "1", "minWidth": "120px", "padding": "0 15px"}),
             
             html.Div([
@@ -2619,7 +2950,6 @@ def create_circuit_page(theme='dark'):
         
         html.Div(id="circuit-selection-banner", style={"color": "#FFD400", "marginBottom": "10px", "fontWeight": "600"}),
         
-        # KPI Cards
         html.Div([
             circuit_kpi_card("🏁 Circuits Shown", "circuit-kpi-circuits"),
             circuit_kpi_card("🌍 Countries", "circuit-kpi-countries"),
@@ -2627,26 +2957,23 @@ def create_circuit_page(theme='dark'):
             circuit_kpi_card("⚠ Avg DNF Rate", "circuit-kpi-dnf"),
         ], style={"display": "flex", "gap": "20px", "marginBottom": "25px"}),
         
-        # Map
         html.Div([
             circuit_chart_card([dcc.Graph(id="circuit-fig-map", config={"displayModeBar": False})], width="100%"),
         ], style={"marginBottom": "20px"}),
         
-        # Ranked Bars
         html.Div([
             circuit_chart_card([dcc.Graph(id="circuit-fig-speed", config={"displayModeBar": False})], width="32.5%"),
             circuit_chart_card([dcc.Graph(id="circuit-fig-gain", config={"displayModeBar": False})], width="32.5%"),
             circuit_chart_card([dcc.Graph(id="circuit-fig-dnf", config={"displayModeBar": False})], width="32.5%"),
         ], style={"display": "flex", "justifyContent": "space-between", "gap": "1%", "marginBottom": "20px"}),
         
-        # Heatmap + Bubble
         html.Div([
             html.Div([
                 circuit_filter_label("Heatmap sort metric"),
                 dcc.Dropdown(
                     id="circuit-heatmap-sort-metric",
                     options=[{"label": v, "value": k} for k, v in CIRCUIT_METRIC_LABELS.items()],
-                    value="fastestLapSpeed", clearable=False, style={**CIRCUIT_DROPDOWN_STYLE, "width": "260px"},
+                    value="fastestLapSpeed", clearable=False, className='dark-dropdown', style={**CIRCUIT_DROPDOWN_STYLE, "width": "260px"},
                 ),
             ], style={"marginBottom": "10px"}),
             html.Div([
@@ -2655,7 +2982,6 @@ def create_circuit_page(theme='dark'):
             ], style={"display": "flex", "justifyContent": "space-between", "gap": "2%"}),
         ], style={"marginBottom": "25px"}),
         
-        # Insights
         html.Div([
             html.H2("💡 Circuit Insights", style={"color": text_color}),
             html.P("Automatically generated from the currently filtered dataset — not static text.",
@@ -2676,7 +3002,7 @@ def create_circuit_page(theme='dark'):
 
 
 # ============================================================
-# SLOT 9: APP LAYOUT
+# SLOT 10: APP LAYOUT
 # ============================================================
 app.layout = html.Div([
     dcc.Store(id='theme-store', data='dark'),
@@ -2728,6 +3054,7 @@ app.layout = html.Div([
                     ],
                     value='Viridis',
                     clearable=False,
+                    className='dark-dropdown',
                     style={'backgroundColor': '#ffffff', 'color': '#000000', 'border': '1px solid #cccccc', 'borderRadius': '4px'}
                 )
             ], className="sidebar-section"),
@@ -2763,7 +3090,7 @@ app.layout = html.Div([
 
 
 # ============================================================
-# SLOT 10: CSS + JAVASCRIPT
+# SLOT 11: CSS + JAVASCRIPT
 # ============================================================
 app.index_string = '''
 <!DOCTYPE html>
@@ -2792,7 +3119,6 @@ app.index_string = '''
             ::-webkit-scrollbar-track { background: #15181D; }
             ::-webkit-scrollbar-thumb { background: #2A2E37; border-radius: 4px; }
             
-            /* App Header */
             #app-header {
                 background: linear-gradient(120deg, #1D2129 0%, #15181D 70%);
                 border-bottom: 3px solid #E10600;
@@ -2804,7 +3130,6 @@ app.index_string = '''
             }
             #app-header h2 { font-weight: 800; letter-spacing: -0.5px; margin-bottom: 4px; color: #F5F6F7; }
             
-            /* Cards */
             .dash-graph-card {
                 background-color: #1D2129;
                 border: 1px solid #2A2E37;
@@ -2843,7 +3168,6 @@ app.index_string = '''
                 letter-spacing: -0.5px;
             }
             
-            /* KPI Cards */
             .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
             .kpi-card { background: rgba(26, 26, 46, 0.85); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 20px; text-align: center; transition: all 0.3s ease; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
             .kpi-card:hover { transform: translateY(-5px); box-shadow: 0 12px 48px rgba(255,107,53,0.15); border-color: rgba(255,107,53,0.3); }
@@ -2878,7 +3202,6 @@ app.index_string = '''
             
             .leaflet-container { border-radius: 12px !important; z-index: 1 !important; }
             
-            /* Dropdown Fixes */
             .Select-control { background-color: #ffffff !important; border-color: #cccccc !important; border-radius: 4px !important; min-height: 38px !important; }
             .Select-value-label { color: #000000 !important; font-weight: 500 !important; }
             .Select-placeholder { color: #666666 !important; }
@@ -2903,7 +3226,6 @@ app.index_string = '''
             .rc-slider-tooltip-inner { background-color: #ffffff !important; color: #000000 !important; border: 2px solid #ff6b35 !important; font-weight: bold !important; padding: 6px 12px !important; border-radius: 6px !important; box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important; }
             .rc-slider-tooltip-arrow { border-top-color: #ffffff !important; }
             
-            /* Responsive */
             @media (max-width: 768px) { 
                 .kpi-grid { grid-template-columns: repeat(2, 1fr); } 
                 .stats-grid { grid-template-columns: repeat(2, 1fr); }
@@ -2958,7 +3280,7 @@ app.index_string = '''
 
 
 # ============================================================
-# SLOT 11: CALLBACKS
+# SLOT 12: CALLBACKS
 # ============================================================
 from dash import callback_context, html, dcc, no_update
 import plotly.express as px
@@ -3022,86 +3344,103 @@ def toggle_theme(light_clicks, dark_clicks, current_theme):
 def master_page_router(nav_ov, nav_ch, nav_dr, nav_co, nav_ci, nav_st, nav_qu,
                        theme, color_scheme,
                        st_ov, st_ch, st_dr, st_co, st_ci, st_st, st_qu):
-    ctx = callback_context
-    
-    # Set fallback values
-    theme = theme or 'dark'
-    color_scheme = color_scheme or 'Viridis'
-    
-    # Identify what triggered the callback
-    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0] if ctx.triggered else None
-    
-    active_nav = 'nav-overview'  # Default active page
-    
-    # If a nav button was explicitly clicked, use that.
-    if trigger_id and trigger_id.startswith('nav-'):
-        active_nav = trigger_id
-    else:
-        # If triggered by a theme/filter change or initial load, maintain current active page
-        if st_ch and 'active' in st_ch:
-            active_nav = 'nav-championship'
-        elif st_dr and 'active' in st_dr:
-            active_nav = 'nav-drivers'
-        elif st_co and 'active' in st_co:
-            active_nav = 'nav-constructors'
-        elif st_ci and 'active' in st_ci:
-            active_nav = 'nav-circuits'
-        elif st_st and 'active' in st_st:
-            active_nav = 'nav-strategy'
-        elif st_qu and 'active' in st_qu:
-            active_nav = 'nav-qualifying'
+    try:
+        ctx = callback_context
+        
+        theme = theme or 'dark'
+        color_scheme = color_scheme or 'Viridis'
+        
+        trigger_id = ctx.triggered[0]['prop_id'].split('.')[0] if ctx.triggered else None
+        
+        active_nav = 'nav-overview'
+        
+        if trigger_id and trigger_id.startswith('nav-'):
+            active_nav = trigger_id
+        else:
+            if st_ch and 'active' in st_ch:
+                active_nav = 'nav-championship'
+            elif st_dr and 'active' in st_dr:
+                active_nav = 'nav-drivers'
+            elif st_co and 'active' in st_co:
+                active_nav = 'nav-constructors'
+            elif st_ci and 'active' in st_ci:
+                active_nav = 'nav-circuits'
+            elif st_st and 'active' in st_st:
+                active_nav = 'nav-strategy'
+            elif st_qu and 'active' in st_qu:
+                active_nav = 'nav-qualifying'
 
-    # Build nav classes
-    inactive = "nav-link"
-    active = "nav-link active"
-    
-    nav_classes = {
-        'nav-overview': inactive, 'nav-championship': inactive,
-        'nav-drivers': inactive, 'nav-constructors': inactive,
-        'nav-circuits': inactive, 'nav-strategy': inactive,
-        'nav-qualifying': inactive
-    }
-    nav_classes[active_nav] = active
+        inactive = "nav-link"
+        active_class = "nav-link active"
+        
+        nav_classes = {
+            'nav-overview': inactive, 'nav-championship': inactive,
+            'nav-drivers': inactive, 'nav-constructors': inactive,
+            'nav-circuits': inactive, 'nav-strategy': inactive,
+            'nav-qualifying': inactive
+        }
+        nav_classes[active_nav] = active_class
 
-    # Route to the correct layout function
-    if active_nav == 'nav-overview':
-        page = create_overview_page(theme=theme, color_scheme=color_scheme)
-        title, breadcrumb, summary = "Dashboard Overview", "Overview", "All data"
-        
-    elif active_nav == 'nav-championship':
-        page = create_championship_page(theme=theme)
-        title, breadcrumb, summary = "Championship Evolution", "Championship", "Season data"
-        
-    elif active_nav == 'nav-drivers':
-        page = create_driver_performance_page(theme=theme)
-        title, breadcrumb, summary = "Driver Performance", "Drivers", "Driver data"
-        
-    elif active_nav == 'nav-constructors':
-        page = create_constructor_page(theme=theme)
-        title, breadcrumb, summary = "Constructor Evolution", "Constructors", "Constructor data"
-        
-    elif active_nav == 'nav-circuits':
-        page = create_circuit_page(theme=theme)
-        title, breadcrumb, summary = "Circuit Intelligence", "Circuits", "Circuit data"
-        
-    elif active_nav == 'nav-strategy':
-        page = create_strategy_page(theme=theme)
-        title, breadcrumb, summary = "Race Strategy", "Strategy", "Strategy data"
-        
-    elif active_nav == 'nav-qualifying':
-        page = create_qualifying_page(theme=theme)
-        title, breadcrumb, summary = "Qualifying vs Race", "Qualifying vs Race", "Session data"
-        
-    else:
-        page = create_overview_page(theme=theme, color_scheme=color_scheme)
-        title, breadcrumb, summary = "Dashboard Overview", "Overview", "All data"
+        try:
+            if active_nav == 'nav-overview':
+                page = create_overview_page(theme=theme, color_scheme=color_scheme)
+                title, breadcrumb, summary = "Dashboard Overview", "Overview", "All data"
+                
+            elif active_nav == 'nav-championship':
+                page = create_championship_page(theme=theme, color_scheme=color_scheme)
+                title, breadcrumb, summary = "Championship Evolution", "Championship", "Season data"
+                
+            elif active_nav == 'nav-drivers':
+                page = create_driver_performance_page(theme=theme)
+                title, breadcrumb, summary = "Driver Performance", "Drivers", "Driver data"
+                
+            elif active_nav == 'nav-constructors':
+                page = create_constructor_page(theme=theme, color_scheme=color_scheme)
+                title, breadcrumb, summary = "Constructor Evolution", "Constructors", "Constructor data"
+                
+            elif active_nav == 'nav-circuits':
+                page = create_circuit_page(theme=theme)
+                title, breadcrumb, summary = "Circuit Intelligence", "Circuits", "Circuit data"
+                
+            elif active_nav == 'nav-strategy':
+                page = create_strategy_page(theme=theme)
+                title, breadcrumb, summary = "Race Strategy", "Strategy", "Strategy data"
+                
+            elif active_nav == 'nav-qualifying':
+                page = create_qualifying_page(theme=theme)
+                title, breadcrumb, summary = "Qualifying vs Race", "Qualifying vs Race", "Session data"
+                
+            else:
+                page = create_overview_page(theme=theme, color_scheme=color_scheme)
+                title, breadcrumb, summary = "Dashboard Overview", "Overview", "All data"
+                
+        except Exception as e:
+            logger.error(f"Error creating page {active_nav}: {e}")
+            page = html.Div([
+                html.H3("Error loading page", style={'color': '#ff6b35'}),
+                html.P(f"An error occurred: {str(e)}", style={'color': '#ff6b6b'}),
+                html.P("Please check the console for more details.", style={'color': '#9AA0AA'})
+            ])
+            title, breadcrumb, summary = "Error", "Error", "Error"
 
-    return (page, title, breadcrumb, summary,
-            nav_classes['nav-overview'], nav_classes['nav-championship'], 
-            nav_classes['nav-drivers'], nav_classes['nav-constructors'], 
-            nav_classes['nav-circuits'], nav_classes['nav-strategy'], 
-            nav_classes['nav-qualifying'])
-    
+        return (page, title, breadcrumb, summary,
+                nav_classes['nav-overview'], nav_classes['nav-championship'], 
+                nav_classes['nav-drivers'], nav_classes['nav-constructors'], 
+                nav_classes['nav-circuits'], nav_classes['nav-strategy'], 
+                nav_classes['nav-qualifying'])
+                
+    except Exception as e:
+        logger.error(f"Master page router error: {e}")
+        error_page = html.Div([
+            html.H3("🚨 Error Loading Page", style={'color': '#ff6b35'}),
+            html.P(f"Error: {str(e)}", style={'color': '#ff6b6b'}),
+            html.P("Please check your console for more details.", style={'color': '#9AA0AA'})
+        ])
+        return (error_page, "Error", "Error", "Error",
+                "nav-link active", "nav-link", "nav-link", "nav-link", 
+                "nav-link", "nav-link", "nav-link")
+
+
 # Callback 3: Driver Data Table
 @app.callback(
     Output('driver-data-table', 'data'),
@@ -3171,7 +3510,6 @@ def update_driver_dashboard(d1, d2, season, view_type):
     trends1 = engine.get_historical_trends(d1, season)
     trends2 = engine.get_historical_trends(d2, season) if d2 else pd.DataFrame()
     
-    # Line Chart
     line_fig = go.Figure()
     if not trends1.empty:
         custom_data_1 = trends1[['grid', 'points', 'status']]
@@ -3223,7 +3561,6 @@ def update_driver_dashboard(d1, d2, season, view_type):
             margin=dict(t=40, b=40, l=40, r=40)
         )
     
-    # Box/Violin Chart
     box_fig = go.Figure()
     class1, dnf1 = engine.get_classified_finishes(d1, season), engine.get_dnf_summary(d1, season)
     if not class1.empty:
@@ -3256,7 +3593,6 @@ def update_driver_dashboard(d1, d2, season, view_type):
             margin=dict(t=40, b=40, l=40, r=40)
         )
     
-    # Radar Chart
     radar_fig = go.Figure()
     radar_df = engine.generate_normalized_radar_metrics([d1, d2] if d2 else [d1], season)
     if not radar_df.empty:
@@ -3310,7 +3646,7 @@ def switch_constructor_panel(tab):
 def reset_constructor_filters(n_clicks):
     df = load_data()
     constructor_season = aggregate_constructor_season(df)
-    all_constructors = sorted(constructor_season["constructor_name"].unique())
+    all_constructors = sorted(constructor_season["constructor_name"].unique()) if not constructor_season.empty else []
     default_constructors = [c for c in ["Mercedes", "Red Bull", "Ferrari", "McLaren"] if c in all_constructors] or all_constructors[:4]
     year_min, year_max = int(df["year"].min()), int(df["year"].max())
     return default_constructors, [year_min, year_max], "season_points"
@@ -3351,7 +3687,6 @@ def update_constructor_charts(selected_constructors, year_range, metric):
         points_share["year"].between(y0, y1)
     ]
     
-    # Line Chart
     def build_metric_frame(filtered_season, filtered_share, metric):
         if metric == "points_share_pct":
             d = filtered_share.rename(columns={"points_share_pct": "value"}).copy()
@@ -3409,7 +3744,6 @@ def update_constructor_charts(selected_constructors, year_range, metric):
     fig_line.update_xaxes(gridcolor='#2A2E37', zerolinecolor='#2A2E37')
     fig_line.update_yaxes(gridcolor='#2A2E37', zerolinecolor='#2A2E37')
     
-    # Bar Chart
     reliability_long = filtered.melt(
         id_vars=["year", "constructor_name"],
         value_vars=["finishes", "dnfs"],
@@ -3440,7 +3774,6 @@ def update_constructor_charts(selected_constructors, year_range, metric):
     fig_bar.update_xaxes(gridcolor='#2A2E37', zerolinecolor='#2A2E37')
     fig_bar.update_yaxes(gridcolor='#2A2E37', zerolinecolor='#2A2E37')
     
-    # Area Chart
     fig_area = px.area(
         filtered_share,
         x="year",
@@ -3464,7 +3797,6 @@ def update_constructor_charts(selected_constructors, year_range, metric):
     fig_area.update_xaxes(gridcolor='#2A2E37', zerolinecolor='#2A2E37')
     fig_area.update_yaxes(gridcolor='#2A2E37', zerolinecolor='#2A2E37')
     
-    # Insights
     insights = []
     trend = (
         filtered.sort_values("year")
@@ -3512,7 +3844,6 @@ def update_constructor_charts(selected_constructors, year_range, metric):
         for text in insights
     ]
     
-    # KPI Cards
     total_points = int(filtered["season_points"].sum())
     
     def kpi_card(icon, label, value, sub=""):
@@ -3615,7 +3946,7 @@ def render_drilldown(clicked_year, clicked_constructor):
 def update_yoy_table(selected_constructors, year_range):
     df = load_data()
     year_over_year = aggregate_year_over_year_change(df)
-    if not selected_constructors:
+    if not selected_constructors or year_over_year.empty:
         return []
     y0, y1 = year_range
     filtered = year_over_year[
@@ -3668,7 +3999,6 @@ def toggle_sidebar(btn_clicks, overlay_clicks, current_class):
 # ============================================================
 # CIRCUIT INTELLIGENCE CALLBACKS
 # ============================================================
-
 @app.callback(
     Output("selected-circuit-store", "data"),
     Input("circuit-fig-map", "clickData"),
@@ -3752,6 +4082,13 @@ def update_circuit_dashboard(year_range, countries, constructors, top_n, directi
     return (fig_map, fig_speed, fig_gain, fig_dnf, fig_heatmap, fig_bubble,
             f"{total_circuits}", f"{total_countries}", f"{avg_speed}", f"{avg_dnf}%",
             insights, banner)
+
+
+# ============================================================
+# REGISTER ALL CALLBACKS
+# ============================================================
+register_qualifying_callbacks(app)
+register_championship_callbacks(app)
 
 
 # ============================================================
